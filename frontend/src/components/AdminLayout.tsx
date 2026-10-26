@@ -7,7 +7,7 @@
  */
 import * as React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ChartLine, Inbox, ListX, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, X } from 'lucide-react';
+import { ChartLine, Gavel, Inbox, ListX, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, SlidersHorizontal, Vault, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { clearSession } from '@/lib/mitra-auth';
@@ -22,8 +22,8 @@ import { Alertas } from '@/components/Alertas';
 // A recusa forte mora no motor (perfil vai no cabeçalho X-Usuario-Perfil); aqui
 // só se esconde o que o perfil não pode abrir.
 const MODULOS_POR_PERFIL: Record<string, string[]> = {
-  admin: ['fila', 'painel', 'lacunas', 'configuracoes'],
-  revisor: ['fila', 'painel', 'lacunas'],
+  admin: ['fila', 'painel', 'lacunas', 'configuracoes', 'licitacoes', 'funil', 'cofre'],
+  revisor: ['fila', 'painel', 'lacunas', 'licitacoes'],
 };
 
 const MENU = [
@@ -33,6 +33,14 @@ const MENU = [
       { to: '/fila', label: 'Fila', modulo: 'fila', Icone: Inbox },
       { to: '/painel', label: 'Painel', modulo: 'painel', Icone: ChartLine },
       { to: '/relatorios/lacunas', label: 'Lacunas de cadastro', modulo: 'lacunas', Icone: ListX },
+    ],
+  },
+  {
+    grupo: 'Licitações',
+    itens: [
+      { to: '/licitacoes', label: 'Triagem', modulo: 'licitacoes', Icone: Gavel, end: true },
+      { to: '/licitacoes/funil', label: 'Funil', modulo: 'funil', Icone: SlidersHorizontal },
+      { to: '/licitacoes/cofre', label: 'Cofre', modulo: 'cofre', Icone: Vault },
     ],
   },
   {
@@ -116,10 +124,11 @@ export default function AdminLayout({
             ) : (
               <p className="mb-1 px-2 text-[11px] font-semibold tracking-[0.14em] text-ink-muted uppercase">{grupo.grupo}</p>
             )}
-            {grupo.itens.map(({ to, label, Icone }) => (
+            {grupo.itens.map(({ to, label, Icone, end }) => (
               <NavLink
                 key={to}
                 to={to}
+                end={end}
                 title={label}
                 onClick={() => setGaveta(false)}
                 className={({ isActive }) =>

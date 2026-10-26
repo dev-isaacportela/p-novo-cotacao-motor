@@ -10,7 +10,8 @@ este projeto só desenha telas e encaminha chamadas pela SF gateway.
 
 1. `docs/constitution.md` — o processo.
 2. `docs/design.md` — o sistema visual. É normativo.
-3. A spec: `../../BENENUTRI/cotacao-motor/specs/001-nucleo-bionexo/{spec,plan,tasks}.md`.
+3. As specs: `../../BENENUTRI/cotacao-motor/specs/001-nucleo-bionexo/` (cotações) e
+   `specs/006-licitacao-funil/` (licitações: triagem, análise, funil, cofre).
 
 ## Estrutura
 

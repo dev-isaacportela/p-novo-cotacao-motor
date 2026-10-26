@@ -5,6 +5,7 @@ import { duracao } from '@/lib/prazo';
 import { numero } from '@/lib/formato';
 import type { PortalResumo } from '@/lib/tipos';
 import { Alert, Button, Dash, EmptyState, GradeKpi, Kpi, LabelledField, Input, PageHeader, Panel, PanelHeader, Pilha, Table, Td, Th, Tr } from '@/components/page';
+import { PainelLicitacoes } from '@/pages/licitacoes/PainelLicitacoes';
 
 export default function PainelPage() {
   const [de, setDe] = useState('');
@@ -72,6 +73,8 @@ export default function PainelPage() {
             </Table>
           )}
         </Panel>
+        <PanelHeader title="Licitações" hint="Funil público por camada, fonte e motivo (spec 006)." />
+        <PainelLicitacoes de={de} ate={ate} />
       </Pilha>
     </>
   );

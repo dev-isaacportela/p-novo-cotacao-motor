@@ -74,4 +74,6 @@ export const ROTULO_MARCA: Record<string, string> = {
   CONFERIR_UNIDADE: 'conferir unidade',
   PENDENTE_PRECO: 'pendente de preço',
   RECONFERIR: 'reconferir',
+  SEM_PRE_LEITURA: 'sem pré-leitura',
+  SEM_TEXTO_EDITAL: 'edital sem texto',
 };

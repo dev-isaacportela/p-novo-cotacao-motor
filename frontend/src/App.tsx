@@ -11,6 +11,10 @@ import HistoricoPage from '@/pages/HistoricoPage';
 import PainelPage from '@/pages/PainelPage';
 import LacunasPage from '@/pages/LacunasPage';
 import ConfiguracoesPage from '@/pages/ConfiguracoesPage';
+import TriagemPage from '@/pages/licitacoes/TriagemPage';
+import AnalisePage from '@/pages/licitacoes/AnalisePage';
+import FunilPage from '@/pages/licitacoes/FunilPage';
+import CofrePage from '@/pages/licitacoes/CofrePage';
 
 /**
  * Guarda de sessão (spec 002): autenticar na Mitra não basta — o e-mail precisa
@@ -76,6 +80,10 @@ function Autenticado() {
         <Route path="painel" element={<PainelPage />} />
         <Route path="relatorios/lacunas" element={<LacunasPage />} />
         {usuario.PERFIL === 'admin' ? <Route path="configuracoes" element={<ConfiguracoesPage />} /> : null}
+        <Route path="licitacoes" element={<TriagemPage />} />
+        {usuario.PERFIL === 'admin' ? <Route path="licitacoes/funil" element={<FunilPage />} /> : null}
+        {usuario.PERFIL === 'admin' ? <Route path="licitacoes/cofre" element={<CofrePage />} /> : null}
+        <Route path="licitacoes/:id" element={<AnalisePage />} />
         <Route path="*" element={<Navigate to="/fila" replace />} />
       </Route>
     </Routes>
