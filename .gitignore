@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.e2b/
+backend/migrations/SKILL.md
+
+.obsidian/
+
+# o simulador vai para a equipe: e onde os testes do backend rodam.
+# so o banco gerado fica de fora.
+backend/simulator/data/
+
+# anexos temporarios do app
+uploads/
