@@ -18,6 +18,7 @@ function mensagem(e: unknown, padrao: string) {
 const linhas = (s: string) => s.split(/[\n,;]/).map((x) => x.trim()).filter(Boolean);
 const numeros = (s: string) => linhas(s).map(Number).filter(Number.isFinite);
 const texto = (l: (string | number)[] | null | undefined) => (l ?? []).join('\n');
+const virgulas = (l: (string | number)[] | null | undefined) => (l ?? []).join(', ');   // campos de uma linha
 
 export default function FunilPage() {
   const [versoes, setVersoes] = useState<{ ativa: number | null; versoes: FunilVersaoResumo[] } | null>(null);
@@ -86,8 +87,8 @@ function Versao({ d, ativa, avisar, onMudou }: { d: FunilVersaoDetalhe; ativa: n
   const [palavras, setPalavras] = useState(texto(c.palavrasAdicionais));
   const [exclusoes, setExclusoes] = useState(texto(c.exclusoes));
   const [cnaes, setCnaes] = useState(texto(c.cnaes));
-  const [ufs, setUfs] = useState(texto(c.ufs));
-  const [modalidades, setModalidades] = useState(texto(c.modalidades));
+  const [ufs, setUfs] = useState(virgulas(c.ufs));
+  const [modalidades, setModalidades] = useState(virgulas(c.modalidades));
   const [raioKm, setRaioKm] = useState(c.raioKm == null ? '' : String(c.raioKm));
   const [valorMinimo, setValorMinimo] = useState(c.valorMinimo == null ? '' : String(c.valorMinimo));
   const [capacidade, setCapacidade] = useState(c.capacidadeSemanal == null ? '' : String(c.capacidadeSemanal));
@@ -124,7 +125,7 @@ function Versao({ d, ativa, avisar, onMudou }: { d: FunilVersaoDetalhe; ativa: n
           <LabelledField label="Exclusões (termos)"><Textarea value={exclusoes} onChange={(e) => setExclusoes(e.target.value)} rows={2} disabled={!rascunho} /></LabelledField>
           <LabelledField label="CNAEs"><Textarea value={cnaes} onChange={(e) => setCnaes(e.target.value)} rows={2} disabled={!rascunho} /></LabelledField>
           <LabelledField label="UFs prioritárias"><Input value={ufs} onChange={(e) => setUfs(e.target.value)} disabled={!rascunho} placeholder="SP, MG, PR" /></LabelledField>
-          <LabelledField label="Modalidades"><Input value={modalidades} onChange={(e) => setModalidades(e.target.value)} disabled={!rascunho} /></LabelledField>
+          <LabelledField label="Modalidades" hint="PREGAO, DISPENSA, CONCORRENCIA, REGISTRO_PRECO, INEXIGIBILIDADE; separe por vírgula."><Input value={modalidades} onChange={(e) => setModalidades(e.target.value)} disabled={!rascunho} /></LabelledField>
           <LabelledField label="Raio (km)"><Input value={raioKm} onChange={(e) => setRaioKm(e.target.value)} disabled={!rascunho} inputMode="numeric" /></LabelledField>
           <LabelledField label="Valor mínimo (R$)" hint="Abaixo disso descarta, salvo estratégica."><Input value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} disabled={!rascunho} inputMode="decimal" /></LabelledField>
           <LabelledField label="Capacidade semanal de análise" hint="Acima disso, prioridade baixa espera (RF-016)."><Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} disabled={!rascunho} inputMode="numeric" /></LabelledField>
