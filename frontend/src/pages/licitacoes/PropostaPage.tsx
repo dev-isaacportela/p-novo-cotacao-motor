@@ -123,6 +123,7 @@ export default function PropostaPage() {
   }
 
   const admin = sessao.PERFIL === 'admin';
+  const erroDialogo = aviso?.tone === 'error' ? aviso.texto : null;
   const porItem = pendenciasPorItem(p.pendencias);
   const emRevisao = p.status === 'EM_REVISAO';
   const aprovada = p.status === 'APROVADA';
@@ -145,12 +146,6 @@ export default function PropostaPage() {
           <Definicao rotulo="Exceção de piso">{p.excecaoPisoPor ? `${p.excecaoPisoPor} · ${fmtInstante(p.excecaoPisoEm)} · ${p.excecaoPisoJustificativa}` : null}</Definicao>
         </Definicoes>
         <Pilha>
-          {p.pendencias.length ? (
-            <Alert tone="warn">
-              <span className="font-semibold">Falta para aprovar ({p.pendencias.length}):</span>
-              <ul className="mt-1 list-disc pl-5">{p.pendencias.map((x) => <li key={x}>{x}</li>)}</ul>
-            </Alert>
-          ) : null}
           <Selos>
             {emRevisao ? <Button variant="primary" onClick={() => acao('proposta/aprovar', 'Proposta aprovada e congelada.')} disabled={ocupado || p.pendencias.length > 0}>Aprovar</Button> : null}
             {emRevisao && admin && !p.excecaoPisoPor ? <Button onClick={() => setDialogo('excecao')} disabled={ocupado}>Exceção de piso</Button> : null}
@@ -162,6 +157,13 @@ export default function PropostaPage() {
           </Selos>
         </Pilha>
       </CabecalhoFixo>
+
+      {p.pendencias.length ? (
+        <Alert tone="warn" className="mb-4">
+          <span className="font-semibold">Falta para aprovar ({p.pendencias.length}):</span>
+          <ul className="mt-1 list-disc pl-5">{p.pendencias.map((x) => <li key={x}>{x}</li>)}</ul>
+        </Alert>
+      ) : null}
 
       <Panel>
         <PanelHeader title="Linhas" hint="Uma por item do edital. O teto é o PMVG da tabela do governo na alíquota da UF; o mínimo é custo × (1 + impostos + frete + margem), nunca abaixo do piso." />
@@ -212,15 +214,15 @@ export default function PropostaPage() {
         </Table>
       </Panel>
 
-      {editando ? <DialogoLinha linha={editando} onFechar={() => setEditando(null)} onSalvar={salvarLinha} ocupado={ocupado} /> : null}
-      {dialogo === 'excecao' ? <DialogoTexto titulo="Exceção de piso" descricao="Vale para a proposta inteira: o mínimo pode ficar abaixo do piso cadastrado (RN-006). Fica no histórico com o seu nome." rotulo="Justificativa" onFechar={() => setDialogo(null)} onConfirmar={(t) => acao('proposta/excecao-piso', 'Exceção registrada.', { justificativa: t })} ocupado={ocupado} /> : null}
-      {dialogo === 'enviada' ? <DialogoTexto titulo="Marcar como enviada" descricao="O cadastro no portal é feito pela pessoa (RN-008). Informe o protocolo que o portal devolveu." rotulo="Protocolo" linhas={1} onFechar={() => setDialogo(null)} onConfirmar={(t) => acao('proposta/enviada', 'Proposta marcada como enviada; sessão no calendário.', { protocolo: t })} ocupado={ocupado} /> : null}
-      {dialogo === 'resultado' ? <DialogoResultado linhas={p.linhas} onFechar={() => setDialogo(null)} onConfirmar={(r) => acao('resultado', 'Resultado registrado.', r)} ocupado={ocupado} /> : null}
+      {editando ? <DialogoLinha linha={editando} erro={erroDialogo} onFechar={() => { setEditando(null); setAviso(null); }} onSalvar={salvarLinha} ocupado={ocupado} /> : null}
+      {dialogo === 'excecao' ? <DialogoTexto erro={erroDialogo} titulo="Exceção de piso" descricao="Vale para a proposta inteira: o mínimo pode ficar abaixo do piso cadastrado (RN-006). Fica no histórico com o seu nome." rotulo="Justificativa" onFechar={() => setDialogo(null)} onConfirmar={(t) => acao('proposta/excecao-piso', 'Exceção registrada.', { justificativa: t })} ocupado={ocupado} /> : null}
+      {dialogo === 'enviada' ? <DialogoTexto erro={erroDialogo} titulo="Marcar como enviada" descricao="O cadastro no portal é feito pela pessoa (RN-008). Informe o protocolo que o portal devolveu." rotulo="Protocolo" linhas={1} onFechar={() => setDialogo(null)} onConfirmar={(t) => acao('proposta/enviada', 'Proposta marcada como enviada; sessão no calendário.', { protocolo: t })} ocupado={ocupado} /> : null}
+      {dialogo === 'resultado' ? <DialogoResultado erro={erroDialogo} linhas={p.linhas} onFechar={() => setDialogo(null)} onConfirmar={(r) => acao('resultado', 'Resultado registrado.', r)} ocupado={ocupado} /> : null}
     </>
   );
 }
 
-function DialogoLinha({ linha, onFechar, onSalvar, ocupado }: { linha: LinhaProposta; onFechar: () => void; onSalvar: (e: EdicaoLinha) => void; ocupado: boolean }) {
+function DialogoLinha({ linha, erro, onFechar, onSalvar, ocupado }: { linha: LinhaProposta; erro?: string | null; onFechar: () => void; onSalvar: (e: EdicaoLinha) => void; ocupado: boolean }) {
   const [codProd, setCodProd] = useState(linha.codProd ? String(linha.codProd) : '');
   const [preco, setPreco] = useState(linha.precoFinal != null ? String(linha.precoFinal) : '');
   const [justificativa, setJustificativa] = useState(linha.justificativa ?? '');
@@ -241,6 +243,7 @@ function DialogoLinha({ linha, onFechar, onSalvar, ocupado }: { linha: LinhaProp
         </DialogHeader>
         <DialogBody>
           <Pilha>
+            {erro ? <Alert tone="error">{erro}</Alert> : null}
             <CheckRow marcado={declinar} onToggle={() => setDeclinar((v) => !v)} hint="Sai da proposta com motivo; o item fica na planilha como declinado.">Declinar este item</CheckRow>
             {declinar ? <LabelledField label="Motivo" obrigatorio><Input value={motivo} onChange={(e) => setMotivo(e.target.value)} /></LabelledField> : (
               <>
@@ -250,7 +253,7 @@ function DialogoLinha({ linha, onFechar, onSalvar, ocupado }: { linha: LinhaProp
                 <LabelledField label="Preço final" hint={<>sugerido {linha.precoSugerido != null ? moeda(linha.precoSugerido) : '—'}{linha.tetoGoverno != null ? ` · teto ${moeda(linha.tetoGoverno)}` : ''}{linha.valorMinimo != null ? ` · mínimo ${moeda(linha.valorMinimo)}` : ''}{av !== 'OK' && av !== 'SEM_PRECO' ? <span className="text-destructive"> · {ROTULO_AVALIACAO[av]}</span> : null}</>}>
                   <Input value={preco} onChange={(e) => setPreco(e.target.value)} inputMode="decimal" />
                 </LabelledField>
-                <LabelledField label="Justificativa do preço" hint="Obrigatória quando o preço final difere do sugerido (RN-005).">
+                <LabelledField label="Justificativa do preço" hint="Obrigatória quando o preço final difere do sugerido, ou quando não há sugerido (RN-008).">
                   <Input value={justificativa} onChange={(e) => setJustificativa(e.target.value)} />
                 </LabelledField>
                 {linha.custo == null ? (
@@ -281,13 +284,14 @@ function DialogoLinha({ linha, onFechar, onSalvar, ocupado }: { linha: LinhaProp
   );
 }
 
-function DialogoTexto({ titulo, descricao, rotulo, linhas = 3, onFechar, onConfirmar, ocupado }: { titulo: string; descricao: string; rotulo: string; linhas?: number; onFechar: () => void; onConfirmar: (t: string) => void; ocupado: boolean }) {
+function DialogoTexto({ titulo, descricao, rotulo, erro, linhas = 3, onFechar, onConfirmar, ocupado }: { titulo: string; descricao: string; rotulo: string; erro?: string | null; linhas?: number; onFechar: () => void; onConfirmar: (t: string) => void; ocupado: boolean }) {
   const [texto, setTexto] = useState('');
   return (
     <Dialog open onOpenChange={(a) => !a && onFechar()}>
       <DialogContent>
         <DialogHeader><DialogTitle>{titulo}</DialogTitle><DialogDescription>{descricao}</DialogDescription></DialogHeader>
         <DialogBody>
+          {erro ? <Alert tone="error" className="mb-3">{erro}</Alert> : null}
           <LabelledField label={rotulo} obrigatorio>
             {linhas === 1 ? <Input value={texto} onChange={(e) => setTexto(e.target.value)} /> : <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={linhas} />}
           </LabelledField>
@@ -303,15 +307,16 @@ function DialogoTexto({ titulo, descricao, rotulo, linhas = 3, onFechar, onConfi
 
 const OPCOES_RESULTADO = [{ value: '', label: '— sem registro —' }, ...Object.entries(ROTULO_RESULTADO).map(([value, label]) => ({ value, label }))];
 
-function DialogoResultado({ linhas, onFechar, onConfirmar, ocupado }: { linhas: LinhaProposta[]; onFechar: () => void; onConfirmar: (r: { itemId: number; resultado: Resultado; precoVencedor: number | null }[]) => void; ocupado: boolean }) {
+function DialogoResultado({ linhas, erro, onFechar, onConfirmar, ocupado }: { linhas: LinhaProposta[]; erro?: string | null; onFechar: () => void; onConfirmar: (r: { itemId: number; resultado: Resultado; precoVencedor: number | null }[]) => void; ocupado: boolean }) {
   const ofertadas = linhas.filter((l) => !l.declinado);
   const [res, setRes] = useState<Record<number, { resultado: string; preco: string }>>(Object.fromEntries(ofertadas.map((l) => [l.itemId, { resultado: l.resultado ?? '', preco: l.precoVencedor != null ? String(l.precoVencedor) : '' }])));
   const lista = ofertadas.filter((l) => res[l.itemId]?.resultado).map((l) => ({ itemId: l.itemId, resultado: res[l.itemId].resultado as Resultado, precoVencedor: res[l.itemId].preco.trim() ? Number(res[l.itemId].preco.replace(',', '.')) : null }));
   return (
     <Dialog open onOpenChange={(a) => !a && onFechar()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader><DialogTitle>Resultado por item</DialogTitle><DialogDescription>O registro manual prevalece sobre o que o portal publicar (RN-009). Algum item vencido ⇒ licitação ganha.</DialogDescription></DialogHeader>
         <DialogBody>
+          {erro ? <Alert tone="error" className="mb-3">{erro}</Alert> : null}
           <Table>
             <thead><tr><Th>Item</Th><Th numeric>Ofertado</Th><Th>Resultado</Th><Th numeric>Preço vencedor</Th></tr></thead>
             <tbody>

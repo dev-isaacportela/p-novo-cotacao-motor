@@ -103,7 +103,7 @@ export default function AtasPage() {
                       <Td><Code>{e.numero}</Code></Td>
                       <Td>{fmtData(e.data)}</Td>
                       <Td numeric>{e.itens.length}</Td>
-                      <Td>{e.pedidoId ? <TextLink onClick={() => navigate(`/oportunidades/${aberta.ata.oportunidadeId}`)}>pedido {e.pedidoId}</TextLink> : <Dash />}</Td>
+                      <Td>{e.pedidoId ? <TextLink onClick={() => navigate(`/licitacoes/${aberta.ata.oportunidadeId}`)}>pedido {e.pedidoId}</TextLink> : <Dash />}</Td>
                       <Td>{e.registradoPor} · {fmtInstante(e.criadoEm)}</Td>
                     </Tr>
                   ))}
