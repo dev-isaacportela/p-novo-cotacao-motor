@@ -330,5 +330,7 @@ export interface SituacaoTabelaGoverno {
   referencia: string | null;
   linhas: number;
   desatualizada: boolean;
+  /** upload = arquivo CMED pelo admin; mitra = lista em vigor no Precificação, copiada todo dia */
+  fonte: 'upload' | 'mitra';
   idadeMaximaDias: number;
 }

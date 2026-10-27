@@ -223,23 +223,34 @@ function TabelaGoverno({ avisar }: { avisar: Avisar }) {
     finally { setOcupado(false); }
   }
 
+  async function sincronizar() {
+    setOcupado(true);
+    try { await motor('POST', 'admin/governo/tabela/sincronizar'); avisar('success', 'Cópia da lista CMED do Precificação pedida; a referência muda quando o trabalho terminar.'); }
+    catch (e) { avisar('error', mensagem(e, 'Falha ao pedir a sincronização.')); }
+    finally { setOcupado(false); }
+  }
+
+  const doMitra = sit?.fonte === 'mitra';
   return (
     <Pilha>
       <Panel>
-        <PanelHeader title="Situação" hint="O teto de venda ao governo vem do PMVG desta tabela, na alíquota de ICMS da UF do órgão." />
-        <div className="grid gap-3 p-4 sm:grid-cols-3">
+        <PanelHeader title="Situação" hint="O teto de venda ao governo vem do PMVG desta tabela, na alíquota de ICMS da UF do órgão.">
+          {doMitra ? <Button variant="primary" onClick={sincronizar} disabled={ocupado}>Sincronizar agora</Button> : null}
+        </PanelHeader>
+        <div className="grid gap-3 p-4 sm:grid-cols-4">
+          <Field label="Fonte">{sit ? (doMitra ? 'Precificação (lista CMED em vigor, copiada todo dia)' : 'arquivo carregado pelo admin') : <Dash />}</Field>
           <Field label="Referência">{sit?.referencia ? fmtData(sit.referencia) : <Dash />}</Field>
           <Field label="Apresentações">{sit ? sit.linhas : <Dash />}</Field>
           <Field label="Idade">{sit ? <Status tone={sit.desatualizada ? 'alert' : sit.referencia ? 'live' : 'off'}>{sit.desatualizada ? `desatualizada (mais de ${sit.idadeMaximaDias} dias)` : sit.referencia ? 'em dia' : 'sem tabela'}</Status> : <Dash />}</Field>
         </div>
       </Panel>
-      <Panel className="p-4">
+      {doMitra ? null : <Panel className="p-4">
         <form onSubmit={(e) => { e.preventDefault(); enviar(); }} className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
           <LabelledField label="Arquivo da CMED (CSV)" obrigatorio hint="Lista de preços publicada pela Anvisa/CMED; as colunas PMVG são achadas pelo nome."><Input type="file" accept=".csv,.txt" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} /></LabelledField>
           <LabelledField label="Data de referência" obrigatorio><Input type="date" value={referencia} onChange={(e) => setReferencia(e.target.value)} /></LabelledField>
           <Button type="submit" variant="primary" disabled={ocupado || !arquivo || !referencia}>Carregar</Button>
         </form>
-      </Panel>
+      </Panel>}
     </Pilha>
   );
 }
