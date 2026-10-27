@@ -76,4 +76,7 @@ export const ROTULO_MARCA: Record<string, string> = {
   RECONFERIR: 'reconferir',
   SEM_PRE_LEITURA: 'sem pré-leitura',
   SEM_TEXTO_EDITAL: 'edital sem texto',
+  TETO_APLICADO: 'teto do governo aplicado',
+  TETO_A_CONFERIR: 'teto a conferir',
+  INVIAVEL: 'inviável',
 };

@@ -187,6 +187,12 @@ export interface MetricasLicitacoes {
   perdidasPorNaoCaptacao: number;
   perdidasPorFonte: Record<string, number>;
   horasAteDecisao: number | null;
+  propostasPorEstado: Record<string, number>;
+  resultadoDoPeriodo: Record<string, number>;
+  atasVigentes: number;
+  itensDeAtaComSaldo: number;
+  tabelaGovernoReferencia: string | null;
+  tabelaGovernoDesatualizada: boolean;
 }
 
 export interface PerdaCaptacao {
@@ -198,4 +204,131 @@ export interface PerdaCaptacao {
   motivoProvavel: string | null;
   registradoPor: string;
   criadoEm: string;
+}
+
+// ---- Spec 007: proposta de licitação, resultado, atas e empenhos ----
+
+export type Resultado = 'VENCEDOR' | 'PERDEU' | 'DESCLASSIFICADO';
+export type OrigemRegistro = 'FONTE' | 'PESSOA';
+
+export interface LinhaProposta {
+  itemId: number;
+  item: string;
+  descricao: string;
+  unidade: string | null;
+  quantidade: string | number | null;
+  situacao: string;
+  marcas: string[];
+  codProd: number | null;
+  marca: string | null;
+  fabricante: string | null;
+  embalagem: string | null;
+  registroAnvisa: string | null;
+  precoSugerido: number | null;
+  precoFinal: number | null;
+  preco: number | null;
+  justificativa: string | null;
+  tetoGoverno: number | null;
+  tetoAliquota: number | null;
+  tetoData: string | null;
+  justificativaTeto: string | null;
+  custo: number | null;
+  valorMinimo: number | null;
+  memoriaMinimo: string | null;
+  declinado: boolean;
+  motivoDeclinio: string | null;
+  resultado: Resultado | null;
+  precoVencedor: number | null;
+  resultadoOrigem: OrigemRegistro | null;
+}
+
+export interface PropostaLicitacao {
+  oportunidadeId: number;
+  status: string;
+  numero: string | null;
+  orgao: string | null;
+  uf: string | null;
+  modalidade: string | null;
+  sessaoEm: string | null;
+  propostaId: number | null;
+  aprovadoPor: string | null;
+  aprovadoEm: string | null;
+  enviadoPor: string | null;
+  enviadoEm: string | null;
+  protocolo: string | null;
+  excecaoPisoJustificativa: string | null;
+  excecaoPisoPor: string | null;
+  excecaoPisoEm: string | null;
+  pacoteVersao: string | null;
+  validadeHoras: number | null;
+  condicaoPagamento: string | null;
+  tipoFrete: string | null;
+  pendencias: string[];
+  linhas: LinhaProposta[];
+}
+
+/** Uma linha a editar (PATCH proposta); só o que vier preenchido muda. */
+export interface EdicaoLinha {
+  itemId: number;
+  codProd?: number | null;
+  precoFinal?: number | null;
+  justificativa?: string | null;
+  valorMinimo?: number | null;
+  justificativaTeto?: string | null;
+  declinar?: boolean;
+  motivo?: string | null;
+}
+
+export interface Pacote {
+  nome: string;
+  base64: string;
+  linhas: number;
+  documentosComArquivo: number;
+  documentosFaltando: number;
+}
+
+export interface AtaItem {
+  id: number;
+  itemId: number | null;
+  codProd: number | null;
+  descricao: string | null;
+  quantidadeRegistrada: number;
+  quantidadeEmpenhada: number;
+  precoRegistrado: number | null;
+  saldo: number;
+  saldoPct: number;
+  alertadoSaldoEm: string | null;
+}
+
+export interface Ata {
+  id: number;
+  oportunidadeId: number;
+  numero: string;
+  orgaoCnpj: string | null;
+  vigenciaInicio: string | null;
+  vigenciaFim: string | null;
+  origem: OrigemRegistro;
+  registradoPor: string | null;
+  itens: AtaItem[];
+}
+
+export interface Empenho {
+  id: number;
+  ataId: number;
+  numero: string;
+  data: string | null;
+  pedidoId: number | null;
+  itens: { ataItemId: number; quantidade: number }[];
+  registradoPor: string | null;
+  criadoEm: string;
+}
+
+export interface AtaResumo { ata: Ata; orgao: string | null; numeroLicitacao: string | null; vigente: boolean }
+export interface AtaDetalhe extends AtaResumo { empenhos: Empenho[] }
+
+export interface SituacaoTabelaGoverno {
+  referencia: string | null;
+  linhas: number;
+  desatualizada: boolean;
+  idadeMaximaDias: number;
 }

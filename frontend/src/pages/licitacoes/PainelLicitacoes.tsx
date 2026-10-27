@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { motor, ErroMotor } from '@/lib/motor';
 import { ROTULO_CAMADA, ROTULO_STATUS_LICITACAO } from '@/lib/licitacao';
+import { fmtData } from '@/lib/formato';
 import type { MetricasLicitacoes } from '@/lib/tiposLicitacao';
 import {
   Alert, ChartContainer, ChartTooltip, ChartTooltipContent, corDeSerie, Dash, GradeGraficos, GradeKpi, Kpi, PainelGrafico, Panel, PanelHeader, Pilha, Table, Td, Th, Tr,
@@ -39,6 +40,14 @@ export function PainelLicitacoes({ de, ate }: { de: string; ate: string }) {
         <Kpi rotulo="Descartadas por regra" valor={m ? m.porCamada.REGRAS ?? 0 : <Dash />} hint={m ? `${m.porCamada.PRE_LEITURA ?? 0} na pré-leitura · ${m.porCamada.DECISAO ?? 0} na decisão` : undefined} />
         <Kpi rotulo="Em análise" valor={m ? analisadas : <Dash />} hint={m?.horasAteDecisao != null ? `${m.horasAteDecisao} h até a decisão` : undefined} />
         <Kpi rotulo="Perdidas por não captação" valor={m ? m.perdidasPorNaoCaptacao : <Dash />} hint={m ? Object.entries(m.perdidasPorFonte).map(([f, n]) => `${f}: ${n}`).join(' · ') || undefined : undefined} />
+      </GradeKpi>
+      <GradeKpi>
+        <Kpi rotulo="Propostas em andamento" valor={m ? soma(m.propostasPorEstado, ['EM_REVISAO', 'APROVADA', 'ENVIADA']) : <Dash />}
+          hint={m ? ['EM_REVISAO', 'APROVADA', 'ENVIADA'].map((k) => `${ROTULO_STATUS_LICITACAO[k]}: ${m.propostasPorEstado[k] ?? 0}`).join(' · ') : undefined} />
+        <Kpi rotulo="Ganhas no período" valor={m ? m.resultadoDoPeriodo.GANHA ?? 0 : <Dash />} hint={m ? `${m.resultadoDoPeriodo.PERDIDA ?? 0} perdidas` : undefined} />
+        <Kpi rotulo="Atas vigentes" valor={m ? m.atasVigentes : <Dash />} hint={m ? `${m.itensDeAtaComSaldo} itens com saldo` : undefined} />
+        <Kpi rotulo="Tabela de governo" valor={m?.tabelaGovernoReferencia ? fmtData(m.tabelaGovernoReferencia) : <Dash />}
+          hint={m ? (m.tabelaGovernoDesatualizada ? 'desatualizada: carregue a tabela nova nas configurações' : m.tabelaGovernoReferencia ? 'em dia' : 'nenhuma tabela carregada') : undefined} />
       </GradeKpi>
       <GradeGraficos>
         <PainelGrafico titulo="Funil por camada" hint="Quantas seguem a cada camada no período." largura="total">

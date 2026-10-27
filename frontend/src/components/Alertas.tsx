@@ -9,11 +9,19 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button, EmptyState, TextLink } from '@/components/page';
 
 const ROTULO: Record<string, string> = {
+  // ATA_VENCE:<id> e ATA_SALDO:<id> caem no rótulo por prefixo abaixo.
   PRAZO: 'Prazo de resposta se aproxima',
   CANCELADA: 'Comprador cancelou a cotação',
   NOVA_VERSAO: 'Comprador alterou a cotação',
   ANVISA_AUSENTE: 'Proposta com item sem registro Anvisa',
+  TABELA_GOVERNO_DESATUALIZADA: 'Tabela de preços do governo desatualizada',
 };
+
+function rotulo(tipo: string) {
+  if (tipo.startsWith('ATA_VENCE:')) return 'Ata de registro de preços vence em breve';
+  if (tipo.startsWith('ATA_SALDO:')) return 'Item de ata com saldo baixo';
+  return ROTULO[tipo] ?? tipo;
+}
 
 export function Alertas() {
   const navigate = useNavigate();
@@ -58,7 +66,7 @@ export function Alertas() {
           <ul className="max-h-80 overflow-y-auto">
             {lista.map((a) => (
               <li key={a.id} className="flex flex-col gap-1 border-b border-rule-row px-4 py-3 text-[13px] last:border-b-0">
-                <span className="font-semibold text-ink">{ROTULO[a.tipo] ?? a.tipo}</span>
+                <span className="font-semibold text-ink">{rotulo(a.tipo)}</span>
                 <span className="text-[12px] text-ink-secondary">{fmtInstante(a.criadoEm)}</span>
                 <span className="flex items-center gap-3">
                   {a.oportunidadeId ? (

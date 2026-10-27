@@ -26,6 +26,11 @@ export const ROTULO_STATUS_LICITACAO: Record<string, string> = {
   EM_ESPERA: 'Em espera',
   EM_ANALISE: 'Em análise',
   PRONTA_PARA_PROPOSTA: 'Pronta para proposta',
+  EM_REVISAO: 'Proposta em revisão',
+  APROVADA: 'Proposta aprovada',
+  ENVIADA: 'Enviada',
+  GANHA: 'Ganha',
+  PERDIDA: 'Perdida',
   NAO_PARTICIPAR: 'Não participar',
   ENCERRADA: 'Encerrada',
 };
@@ -37,6 +42,11 @@ export const TOM_STATUS_LICITACAO: Record<string, Tom> = {
   EM_ESPERA: 'off',
   EM_ANALISE: 'attention',
   PRONTA_PARA_PROPOSTA: 'live',
+  EM_REVISAO: 'attention',
+  APROVADA: 'live',
+  ENVIADA: 'live',
+  GANHA: 'live',
+  PERDIDA: 'off',
   NAO_PARTICIPAR: 'off',
   ENCERRADA: 'off',
 };
@@ -66,7 +76,7 @@ export const ROTULO_ESTADO_PONTO: Record<string, string> = {
 export const TOM_ESTADO_PONTO: Record<string, Tom> = { SUGERIDO: 'attention', APROVADO: 'live', ENVIADO_PELA_PESSOA: 'live', DESCARTADO: 'off', FORA_DO_PRAZO: 'alert' };
 
 export const ROTULO_EVENTO: Record<string, string> = {
-  ESCLARECIMENTO: 'Esclarecimento', IMPUGNACAO: 'Impugnação', SESSAO: 'Sessão pública', RECURSO: 'Recurso', ASSINATURA: 'Assinatura',
+  ESCLARECIMENTO: 'Esclarecimento', IMPUGNACAO: 'Impugnação', SESSAO: 'Sessão pública', RECURSO: 'Recurso', ASSINATURA: 'Assinatura', VIGENCIA_ATA: 'Fim da vigência da ata',
 };
 
 export interface PaginaTexto {

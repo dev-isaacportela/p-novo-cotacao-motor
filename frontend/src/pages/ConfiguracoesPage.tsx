@@ -2,14 +2,15 @@
 // operação), pisos, simulador em modo gravado e fila de erros com reprocessar.
 import { useCallback, useEffect, useState } from 'react';
 import { motor, ErroMotor } from '@/lib/motor';
-import { fmtInstante, moeda } from '@/lib/formato';
+import { fmtData, fmtInstante, moeda } from '@/lib/formato';
 import type { Configuracao, Exclusao, Piso, Trabalho } from '@/lib/tipos';
+import type { SituacaoTabelaGoverno } from '@/lib/tiposLicitacao';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Alert, Button, Code, Dash, EmptyState, Field, Input, LabelledField, PageHeader, Panel, PanelHeader, Pilha, SelectMenu, Status, Table, Td, TextLink, Th, Tr,
 } from '@/components/page';
 
-const SECOES: [string, string][] = [['casamento', 'Casamento'], ['ia', 'IA'], ['proposta', 'Proposta'], ['alerta', 'Operação'], ['preco', 'Operação'], ['funil', 'Casamento']];
+const SECOES: [string, string][] = [['casamento', 'Casamento'], ['ia', 'IA'], ['proposta', 'Proposta'], ['alerta', 'Operação'], ['preco', 'Operação'], ['funil', 'Casamento'], ['lance', 'Lance em licitação'], ['governo', 'Lance em licitação'], ['pacote', 'Lance em licitação'], ['ata', 'Pós-venda']];
 const TIPOS_EXCLUSAO = [
   { value: 'TERMO', label: 'Termo' }, { value: 'COMPRADOR_CNPJ', label: 'Comprador (CNPJ)' }, { value: 'UF', label: 'UF' }, { value: 'CATEGORIA', label: 'Categoria' },
 ];
@@ -32,12 +33,14 @@ export default function ConfiguracoesPage() {
           <TabsTrigger value="exclusoes">Lista de exclusão</TabsTrigger>
           <TabsTrigger value="chaves">Parâmetros</TabsTrigger>
           <TabsTrigger value="pisos">Pisos de preço</TabsTrigger>
+          <TabsTrigger value="governo">Tabela de governo</TabsTrigger>
           <TabsTrigger value="erros">Fila de erros</TabsTrigger>
           <TabsTrigger value="simulador">Simulador</TabsTrigger>
         </TabsList>
         <TabsContent value="exclusoes"><Exclusoes avisar={avisar} /></TabsContent>
         <TabsContent value="chaves"><Chaves avisar={avisar} /></TabsContent>
         <TabsContent value="pisos"><Pisos avisar={avisar} /></TabsContent>
+        <TabsContent value="governo"><TabelaGoverno avisar={avisar} /></TabsContent>
         <TabsContent value="erros"><FilaDeErros avisar={avisar} /></TabsContent>
         <TabsContent value="simulador"><Simulador avisar={avisar} /></TabsContent>
       </Tabs>
@@ -187,6 +190,55 @@ function Pisos({ avisar }: { avisar: Avisar }) {
             </tbody>
           </Table>
         )}
+      </Panel>
+    </Pilha>
+  );
+}
+
+function lerBase64(arquivo: File): Promise<string> {
+  return new Promise((ok, falha) => {
+    const leitor = new FileReader();
+    leitor.onload = () => ok(String(leitor.result).split(',')[1] ?? '');
+    leitor.onerror = () => falha(leitor.error);
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+/** Spec 007 RNF-004: tabela CMED (PMVG por alíquota) carregada pelo admin com a data de referência; desatualizada passa o limite. */
+function TabelaGoverno({ avisar }: { avisar: Avisar }) {
+  const [sit, setSit] = useState<SituacaoTabelaGoverno | null>(null);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [referencia, setReferencia] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const carregar = useCallback(() => { motor<SituacaoTabelaGoverno>('GET', 'admin/governo/tabela').then(setSit).catch((e) => avisar('error', mensagem(e, 'Falha ao consultar a tabela.'))); }, [avisar]);
+  useEffect(carregar, [carregar]);
+
+  async function enviar() {
+    if (!arquivo || !referencia) return;
+    setOcupado(true);
+    try {
+      const r = await motor<SituacaoTabelaGoverno>('POST', 'admin/governo/tabela', { corpo: { arquivoNome: arquivo.name, arquivoBase64: await lerBase64(arquivo), referencia } });
+      setArquivo(null); setReferencia(''); setSit(r); avisar('success', `Tabela de ${fmtData(r.referencia)} carregada: ${r.linhas} apresentações com PMVG.`);
+    } catch (e) { avisar('error', mensagem(e, 'Falha ao carregar a tabela.')); }
+    finally { setOcupado(false); }
+  }
+
+  return (
+    <Pilha>
+      <Panel>
+        <PanelHeader title="Situação" hint="O teto de venda ao governo vem do PMVG desta tabela, na alíquota de ICMS da UF do órgão." />
+        <div className="grid gap-3 p-4 sm:grid-cols-3">
+          <Field label="Referência">{sit?.referencia ? fmtData(sit.referencia) : <Dash />}</Field>
+          <Field label="Apresentações">{sit ? sit.linhas : <Dash />}</Field>
+          <Field label="Idade">{sit ? <Status tone={sit.desatualizada ? 'alert' : sit.referencia ? 'live' : 'off'}>{sit.desatualizada ? `desatualizada (mais de ${sit.idadeMaximaDias} dias)` : sit.referencia ? 'em dia' : 'sem tabela'}</Status> : <Dash />}</Field>
+        </div>
+      </Panel>
+      <Panel className="p-4">
+        <form onSubmit={(e) => { e.preventDefault(); enviar(); }} className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
+          <LabelledField label="Arquivo da CMED (CSV)" obrigatorio hint="Lista de preços publicada pela Anvisa/CMED; as colunas PMVG são achadas pelo nome."><Input type="file" accept=".csv,.txt" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} /></LabelledField>
+          <LabelledField label="Data de referência" obrigatorio><Input type="date" value={referencia} onChange={(e) => setReferencia(e.target.value)} /></LabelledField>
+          <Button type="submit" variant="primary" disabled={ocupado || !arquivo || !referencia}>Carregar</Button>
+        </form>
       </Panel>
     </Pilha>
   );

@@ -7,7 +7,7 @@
  */
 import * as React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ChartLine, Gavel, Inbox, ListX, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, SlidersHorizontal, Vault, X } from 'lucide-react';
+import { ChartLine, Gavel, Inbox, ListX, LogOut, Menu, PanelLeftClose, PanelLeftOpen, ScrollText, Settings, SlidersHorizontal, Vault, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { clearSession } from '@/lib/mitra-auth';
@@ -22,8 +22,8 @@ import { Alertas } from '@/components/Alertas';
 // A recusa forte mora no motor (perfil vai no cabeçalho X-Usuario-Perfil); aqui
 // só se esconde o que o perfil não pode abrir.
 const MODULOS_POR_PERFIL: Record<string, string[]> = {
-  admin: ['fila', 'painel', 'lacunas', 'configuracoes', 'licitacoes', 'funil', 'cofre'],
-  revisor: ['fila', 'painel', 'lacunas', 'licitacoes'],
+  admin: ['fila', 'painel', 'lacunas', 'configuracoes', 'licitacoes', 'funil', 'cofre', 'atas'],
+  revisor: ['fila', 'painel', 'lacunas', 'licitacoes', 'atas'],
 };
 
 const MENU = [
@@ -41,6 +41,7 @@ const MENU = [
       { to: '/licitacoes', label: 'Triagem', modulo: 'licitacoes', Icone: Gavel, end: true },
       { to: '/licitacoes/funil', label: 'Funil', modulo: 'funil', Icone: SlidersHorizontal },
       { to: '/licitacoes/cofre', label: 'Cofre', modulo: 'cofre', Icone: Vault },
+      { to: '/licitacoes/atas', label: 'Atas', modulo: 'atas', Icone: ScrollText },
     ],
   },
   {

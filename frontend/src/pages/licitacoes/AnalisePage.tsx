@@ -98,6 +98,8 @@ export default function AnalisePage() {
           <Selos>
             {c.status === 'EM_DECISAO' || c.status === 'EM_ESPERA' ? <Button variant="primary" onClick={() => setDecidindo(true)} disabled={ocupado}>Decidir</Button> : null}
             {c.status === 'NAO_PARTICIPAR' ? <Button variant="primary" onClick={() => acao('resgatar', 'Licitação de volta à decisão.')} disabled={ocupado}>Resgatar</Button> : null}
+            {c.status === 'PRONTA_PARA_PROPOSTA' ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)} disabled={ocupado}>Montar proposta</Button> : null}
+            {['EM_REVISAO', 'APROVADA', 'ENVIADA', 'GANHA', 'PERDIDA'].includes(c.status) ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)}>Ver proposta</Button> : null}
             {c.status === 'EM_ANALISE' ? (
               <span title={pendentes.length ? `${pendentes.length} exigência(s) sem documento nem justificativa (RN-011)` : 'Marca como pronta para montar a proposta'}>
                 <Button variant="primary" onClick={() => acao('pronta', 'Pronta para proposta.')} disabled={ocupado || pendentes.length > 0}>Pronta para proposta</Button>
