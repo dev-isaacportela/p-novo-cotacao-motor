@@ -72,7 +72,8 @@ export interface Leitura {
 }
 
 export interface Edital {
-  arquivos: { nome: string; tipo: string | null; caminho: string; paginaInicial: number; paginas: number }[];
+  /** `url`: o original no portal (PDF do PNCP), quando o conector informa. */
+  arquivos: { nome: string; tipo: string | null; caminho: string; paginaInicial: number; paginas: number; url?: string | null }[];
   texto: string | null;
   leitura: Leitura | null;
   modelo: string | null;
@@ -125,6 +126,8 @@ export interface LicitacaoDetalhe {
   calendario: EventoCalendario[];
   iaModelo: string | null;
   iaCusto: number | null;
+  /** Página pública da licitação no portal (no PNCP, com os PDFs originais). */
+  linkPortal: string | null;
 }
 
 export interface Documento {

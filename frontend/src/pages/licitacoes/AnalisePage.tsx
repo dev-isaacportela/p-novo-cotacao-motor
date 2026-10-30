@@ -1,20 +1,23 @@
-// Análise da licitação (spec 006 RF-009..RF-013, T-262): cabeçalho com decisão, abas Parecer (achados com salto para a
-// página do edital), Documentos (conciliação com o cofre), Estratégia (pontos com prazo), Calendário e Histórico.
+// Análise da licitação (spec 006 RF-009..RF-013, T-262): cabeçalho com a ação do momento, fatos da licitação, o próximo
+// passo em uma frase e as abas Parecer (pré-leitura, edital e achados com salto para a página), Documentos (conciliação com
+// o cofre), Estratégia (pontos com prazo), Calendário e Histórico.
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motor, ErroMotor } from '@/lib/motor';
 import { fmtData, fmtInstante, moeda, numero } from '@/lib/formato';
 import { ROTULO_MARCA } from '@/lib/cobertura';
 import {
-  aderencia, paginasDoTexto, ROTULO_ESTADO_PONTO, ROTULO_EVENTO, ROTULO_EXIGENCIA, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO,
-  TOM_ESTADO_PONTO, TOM_EXIGENCIA, TOM_STATUS_LICITACAO, tomDaPrioridade,
+  aderencia, diasAte, nomeModalidade, nomeProprio, paginasDoTexto, porteDaPreLeitura, proximoPasso, ROTULO_ESTADO_PONTO, ROTULO_EVENTO,
+  ROTULO_EXIGENCIA, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO, TOM_ESTADO_PONTO, TOM_EXIGENCIA, TOM_STATUS_LICITACAO, tomDaPrioridade,
+  type Aba,
 } from '@/lib/licitacao';
 import type { Achado, Documento, Exigencia, LicitacaoDetalhe, PontoEstrategia } from '@/lib/tiposLicitacao';
 import type { Evento } from '@/lib/tipos';
 import {
-  Alert, Badge, Button, CabecalhoFixo, Cartao, Code, Dash, Definicao, Definicoes, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle, EmptyState, Field, LabelledField, LinhaDoTempo, Momento, PageHeader, Panel, PanelHeader, Pilha, Rebaixado, SelectMenu, Selos,
-  Status, Table, Tabs, TabsContent, TabsList, TabsTrigger, Td, TextLink, Textarea, Th, Tr,
+  Alert, Badge, Button, Cartao, Code, ComLateral, Coluna, Contador, Contadores, Dash, Dialog, DialogBody, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle, EmptyState, Fato, Fatos, Field, LabelledField, LinhaDoTempo, LinkExterno, MetaDot, Momento, PageHeader, Panel,
+  PanelHeader, Paragrafo, Pilha, Rebaixado, RowMeta, SelectMenu, Selos, Status, Table, Tabs, TabsContent, TabsList, TabsTrigger, Td, TextLink,
+  Textarea, TextoPaginado, Th, Toolbar, Tr,
 } from '@/components/page';
 import { DialogoDecisao } from './DialogoDecisao';
 
@@ -24,6 +27,8 @@ function mensagem(e: unknown, padrao: string) {
   return e instanceof ErroMotor ? `${e.regra ? e.regra + ': ' : ''}${e.message}` : padrao;
 }
 
+const COM_PROPOSTA = ['EM_REVISAO', 'APROVADA', 'ENVIADA', 'GANHA', 'PERDIDA'];
+
 export default function AnalisePage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -32,6 +37,7 @@ export default function AnalisePage() {
   const [ocupado, setOcupado] = useState(false);
   const [decidindo, setDecidindo] = useState(false);
   const [pagina, setPagina] = useState<number | null>(null);
+  const [aba, setAba] = useState<Aba>('parecer');
 
   const carregar = useCallback(() => {
     motor<LicitacaoDetalhe>('GET', `licitacoes/${id}`)
@@ -59,11 +65,13 @@ export default function AnalisePage() {
     }
   }
 
+  const voltar = <Button onClick={() => navigate('/licitacoes')}>Voltar à triagem</Button>;
+
   if (!d) {
     return (
       <>
-        <PageHeader module="Licitações" title="Análise" />
-        {aviso ? <Alert tone={aviso.tone}>{aviso.texto}</Alert> : <p className="text-[13px] text-ink-secondary">Carregando...</p>}
+        <PageHeader module="Licitações" title="Análise" actions={voltar} />
+        {aviso ? <Alert tone={aviso.tone}>{aviso.texto}</Alert> : <Paragrafo>Carregando a licitação…</Paragrafo>}
       </>
     );
   }
@@ -72,73 +80,70 @@ export default function AnalisePage() {
   const pendentes = d.exigencias.filter((e) => e.status !== 'ATENDIDO' && !e.justificativa);
   // sem edital lido não há exigência, e "nenhuma pendente" não quer dizer tudo atendido (o motor recusa com RN-011)
   const conciliada = d.edital != null && ['CONCILIACAO', 'ESTRATEGIA'].includes(c.etapa ?? '');
-  const semTexto = c.marcas.includes('SEM_TEXTO_EDITAL');
+  const passo = proximoPasso(c.status, conciliada, pendentes.length, c.decisao === 'PARTICIPAR');
+  const porte = porteDaPreLeitura(d.preLeitura?.porte);
+
+  const principal =
+    c.status === 'EM_DECISAO' || c.status === 'EM_ESPERA' ? <Button variant="primary" onClick={() => setDecidindo(true)} disabled={ocupado}>Decidir</Button>
+    : c.status === 'NAO_PARTICIPAR' ? <Button variant="primary" onClick={() => acao('resgatar', 'Licitação de volta à decisão.')} disabled={ocupado}>Resgatar</Button>
+    : c.status === 'EM_ANALISE' ? <Button variant="primary" onClick={() => acao('pronta', 'Pronta para proposta.')} disabled={ocupado || !conciliada}>Pronta para proposta</Button>
+    : c.status === 'PRONTA_PARA_PROPOSTA' ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)}>Montar proposta</Button>
+    : COM_PROPOSTA.includes(c.status) ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)}>Ver proposta</Button>
+    : null;
 
   return (
     <>
-      <PageHeader module="Licitações" title={`${c.numero ?? c.id} · ${c.orgao ?? ''}`}
-        description={<>{c.modalidade?.toLowerCase()} · {[c.municipio, c.uf].filter(Boolean).join('/')} · {c.fontes.map((f) => <Code key={f}>{f}</Code>)}</>}
-        actions={<Button onClick={() => navigate('/licitacoes')}>Voltar à triagem</Button>} />
-      {aviso ? <Alert tone={aviso.tone} className="mb-4">{aviso.texto}</Alert> : null}
+      <PageHeader module="Licitações" title={`${nomeModalidade(c.modalidade)} ${c.numero ?? c.id}`} description={c.objeto}
+        meta={<>{nomeProprio(c.orgao)}<MetaDot />{[c.municipio, c.uf].filter(Boolean).join('/')}<MetaDot />{c.fontes.map((f) => <Code key={f}>{f}</Code>)}
+          {d.linkPortal ? <><MetaDot /><LinkExterno href={d.linkPortal}>Abrir no portal</LinkExterno></> : null}</>}
+        actions={<>{voltar}{principal}</>} />
 
-      <CabecalhoFixo>
-        <Definicoes>
-          <Definicao rotulo="Status"><Status tone={TOM_STATUS_LICITACAO[c.status] ?? 'off'}>{ROTULO_STATUS_LICITACAO[c.status] ?? c.status}</Status></Definicao>
-          <Definicao rotulo="Sessão">{c.sessaoEm ? fmtInstante(c.sessaoEm) : null}</Definicao>
-          <Definicao rotulo="Valor estimado">{c.valorEstimado != null ? moeda(c.valorEstimado) : null}</Definicao>
-          <Definicao rotulo="Pré-leitura">
-            {c.prioridade ? <><Status tone={tomDaPrioridade(c.prioridade)}>{ROTULO_PRIORIDADE[c.prioridade] ?? c.prioridade}</Status> {c.aderencia != null ? `· aderência ${aderencia(c.aderencia)}` : ''}</> : null}
-          </Definicao>
-          <Definicao rotulo="Decisão">{c.decisao ? `${c.decisao === 'PARTICIPAR' ? 'participar' : 'não participar'} · ${d.decisaoPor ?? ''} · ${fmtInstante(d.decisaoEm)}${d.decisaoMotivo ? ` · ${d.decisaoMotivo}` : ''}` : null}</Definicao>
-          <Definicao rotulo="IA">{d.iaModelo ? `${d.iaModelo} · US$ ${numero(d.iaCusto, 4)}` : null}</Definicao>
-        </Definicoes>
-        <Pilha>
-          <Selos>
-            {c.estrategico ? <Badge tone="accent">estratégica</Badge> : null}
-            {c.marcas.map((m) => <Badge key={m} tone="attention">{ROTULO_MARCA[m] ?? m}</Badge>)}
-          </Selos>
-          <Selos>
-            {c.status === 'EM_DECISAO' || c.status === 'EM_ESPERA' ? <Button variant="primary" onClick={() => setDecidindo(true)} disabled={ocupado}>Decidir</Button> : null}
-            {c.status === 'NAO_PARTICIPAR' ? <Button variant="primary" onClick={() => acao('resgatar', 'Licitação de volta à decisão.')} disabled={ocupado}>Resgatar</Button> : null}
-            {c.status === 'PRONTA_PARA_PROPOSTA' ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)} disabled={ocupado}>Montar proposta</Button> : null}
-            {['EM_REVISAO', 'APROVADA', 'ENVIADA', 'GANHA', 'PERDIDA'].includes(c.status) ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)}>Ver proposta</Button> : null}
-            {c.status === 'EM_ANALISE' ? (
-              <span title={!conciliada ? 'Aguardando a leitura completa e a conciliação do edital (RN-011)' : pendentes.length ? `${pendentes.length} exigência(s) sem documento nem justificativa (RN-011)` : 'Marca como pronta para montar a proposta'}>
-                <Button variant="primary" onClick={() => acao('pronta', 'Pronta para proposta.')} disabled={ocupado || !conciliada || pendentes.length > 0}>Pronta para proposta</Button>
-              </span>
+      <Pilha>
+        {aviso ? <Alert tone={aviso.tone}>{aviso.texto}</Alert> : null}
+
+        <Cartao>
+          <Pilha>
+            <Fatos>
+              <Fato rotulo="Situação"><Status tone={TOM_STATUS_LICITACAO[c.status] ?? 'off'}>{ROTULO_STATUS_LICITACAO[c.status] ?? c.status}</Status></Fato>
+              <Fato rotulo="Sessão" detalhe={diasAte(c.sessaoEm)}>{c.sessaoEm ? fmtInstante(c.sessaoEm) : null}</Fato>
+              <Fato rotulo="Valor estimado" detalhe={porte}>{c.valorEstimado != null ? moeda(c.valorEstimado) : null}</Fato>
+              <Fato rotulo="Pré-leitura" detalhe={c.aderencia != null ? `aderência ${aderencia(c.aderencia)}` : null}>
+                {c.prioridade ? <Status tone={tomDaPrioridade(c.prioridade)}>prioridade {ROTULO_PRIORIDADE[c.prioridade] ?? c.prioridade}</Status> : null}
+              </Fato>
+              <Fato rotulo="Decisão" detalhe={c.decisao ? [d.decisaoPor, d.decisaoEm ? fmtInstante(d.decisaoEm) : null, d.decisaoMotivo].filter(Boolean).join(' · ') : null}>
+                {c.decisao ? (c.decisao === 'PARTICIPAR' ? 'Participar' : 'Não participar') : null}
+              </Fato>
+            </Fatos>
+            {c.estrategico || c.marcas.length ? (
+              <Selos>
+                {c.estrategico ? <Badge tone="accent">estratégica</Badge> : null}
+                {c.marcas.map((m) => <Badge key={m} tone="attention">{ROTULO_MARCA[m] ?? m}</Badge>)}
+              </Selos>
             ) : null}
-          </Selos>
-        </Pilha>
-      </CabecalhoFixo>
+          </Pilha>
+        </Cartao>
 
-      <Tabs defaultValue="parecer">
-        <TabsList>
-          <TabsTrigger value="parecer">Parecer</TabsTrigger>
-          <TabsTrigger value="documentos">Documentos{pendentes.length ? ` (${pendentes.length})` : ''}</TabsTrigger>
-          <TabsTrigger value="estrategia">Estratégia{d.estrategia.length ? ` (${d.estrategia.length})` : ''}</TabsTrigger>
-          <TabsTrigger value="calendario">Calendário</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
-        </TabsList>
-        <TabsContent value="parecer"><Parecer d={d} semTexto={semTexto} irPara={setPagina} /></TabsContent>
-        <TabsContent value="documentos"><Documentos id={c.id} exigencias={d.exigencias} editavel={c.status === 'EM_ANALISE'} onMudou={carregar} avisar={setAviso} /></TabsContent>
-        <TabsContent value="estrategia"><Estrategia id={c.id} pontos={d.estrategia} onMudou={carregar} avisar={setAviso} /></TabsContent>
-        <TabsContent value="calendario">
-          <Panel>
-            <PanelHeader title="Calendário legal" hint="Datas do edital; esclarecimento e impugnação por regra quando o edital não diz (RN-009)." />
-            {d.calendario.length === 0 ? <EmptyState title="Sem prazos ainda" hint="O calendário nasce com a leitura completa." /> : (
-              <Table>
-                <thead><tr><Th>Prazo</Th><Th>Data</Th><Th>Origem</Th><Th>Alerta</Th></tr></thead>
-                <tbody>
-                  {d.calendario.map((e) => (
-                    <Tr key={e.id}><Td>{ROTULO_EVENTO[e.tipo] ?? e.tipo}</Td><Td>{fmtData(e.data)}</Td><Td>{e.origem === 'EDITAL' ? 'edital' : 'regra padrão'}</Td><Td>{e.alertadoEm ? fmtInstante(e.alertadoEm) : <Dash />}</Td></Tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-          </Panel>
-        </TabsContent>
-        <TabsContent value="historico"><Historico id={c.id} /></TabsContent>
-      </Tabs>
+        {passo ? (
+          <Alert tone="info">
+            {passo.texto}{passo.aba && passo.aba !== aba ? <> <TextLink onClick={() => setAba(passo.aba as Aba)}>{passo.acao ?? 'Ver'}</TextLink></> : null}
+          </Alert>
+        ) : null}
+
+        <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
+          <TabsList>
+            <TabsTrigger value="parecer">Parecer</TabsTrigger>
+            <TabsTrigger value="documentos">Documentos{d.exigencias.length ? ` (${pendentes.length ? `${pendentes.length} pendentes` : d.exigencias.length})` : ''}</TabsTrigger>
+            <TabsTrigger value="estrategia">Estratégia{d.estrategia.length ? ` (${d.estrategia.length})` : ''}</TabsTrigger>
+            <TabsTrigger value="calendario">Calendário</TabsTrigger>
+            <TabsTrigger value="historico">Histórico</TabsTrigger>
+          </TabsList>
+          <TabsContent value="parecer"><Parecer d={d} irPara={setPagina} /></TabsContent>
+          <TabsContent value="documentos"><Documentos id={c.id} exigencias={d.exigencias} editavel={c.status === 'EM_ANALISE'} onMudou={carregar} avisar={setAviso} /></TabsContent>
+          <TabsContent value="estrategia"><Estrategia id={c.id} pontos={d.estrategia} onMudou={carregar} avisar={setAviso} /></TabsContent>
+          <TabsContent value="calendario"><Calendario d={d} /></TabsContent>
+          <TabsContent value="historico"><Historico id={c.id} /></TabsContent>
+        </Tabs>
+      </Pilha>
 
       <DialogoDecisao key={decidindo ? c.id : 'fechado'} licitacao={decidindo ? c : null} onFechar={() => setDecidindo(false)}
         onDecidido={() => { setDecidindo(false); setAviso({ tone: 'success', texto: 'Decisão registrada.' }); carregar(); }} />
@@ -153,89 +158,115 @@ function Pagina({ a, irPara }: { a: Achado; irPara: (p: number) => void }) {
   return <TextLink onClick={() => irPara(a.pagina as number)}>p. {a.pagina}</TextLink>;
 }
 
-function Parecer({ d, semTexto, irPara }: { d: LicitacaoDetalhe; semTexto: boolean; irPara: (p: number) => void }) {
+type Secao = { chave: string; titulo: string; achados: Achado[]; colunas: string[]; campos: (keyof Achado)[] };
+
+function Parecer({ d, irPara }: { d: LicitacaoDetalhe; irPara: (p: number) => void }) {
   const e = d.edital;
   const l = e?.leitura;
+  const todas: Secao[] = [
+    { chave: 'itens', titulo: 'Itens', achados: l?.itens ?? [], colunas: ['Quantidade', 'Exigências técnicas'], campos: ['quantidade', 'exigenciasTecnicas'] },
+    { chave: 'documentos', titulo: 'Documentos', achados: l?.documentos ?? [], colunas: ['Tipo'], campos: ['tipoDocumento'] },
+    { chave: 'prazos', titulo: 'Prazos', achados: l?.prazos ?? [], colunas: ['Tipo', 'Data'], campos: ['tipo', 'data'] },
+    { chave: 'riscos', titulo: 'Riscos', achados: l?.riscos ?? [], colunas: ['Tipo', 'Fundamento'], campos: ['tipo', 'fundamento'] },
+    { chave: 'amostras', titulo: 'Amostras', achados: l?.amostras ?? [], colunas: [], campos: [] },
+  ];
+  const secoes = todas.filter((s) => s.achados.length > 0);
+  const [ativa, setAtiva] = useState<string | null>(null);
+  const secao = secoes.find((s) => s.chave === ativa) ?? secoes[0];
   const paginas = paginasDoTexto(e?.texto);
+  const totalPaginas = e?.arquivos.reduce((t, a) => t + (a.paginas ?? 0), 0) ?? 0;
+
   return (
     <Pilha>
       {d.preLeitura ? (
         <Cartao>
-          <Definicoes>
-            <Definicao rotulo="Resumo da pré-leitura">{d.preLeitura.resumo}</Definicao>
-            <Definicao rotulo="Motivo">{d.preLeitura.motivo}</Definicao>
-            <Definicao rotulo="Porte">{d.preLeitura.porte ? Object.entries(d.preLeitura.porte).map(([k, v]) => `${k}: ${String(v)}`).join(' · ') : null}</Definicao>
-          </Definicoes>
-        </Cartao>
-      ) : null}
-      {!e ? <EmptyState title="Sem leitura completa" hint={d.cabecalho.decisao === 'PARTICIPAR' ? 'A leitura está na fila; atualize em instantes.' : 'A leitura completa só roda depois da decisão de participar.'} /> : null}
-      {e && semTexto ? <Alert tone="warn">O edital não tem texto extraível (escaneado). Leia os arquivos abaixo e registre o parecer à mão.</Alert> : null}
-      {e ? (
-        <Cartao>
-          <Definicoes>
-            <Definicao rotulo="Arquivos">{e.arquivos.map((a) => `${a.nome} (${a.paginas} p.)`).join(' · ')}</Definicao>
-            <Definicao rotulo="Leitura">{e.lidoEm ? `${e.modelo} · ${e.promptVersao} · US$ ${numero(e.custo, 4)} · ${fmtInstante(e.lidoEm)}` : null}</Definicao>
-            <Definicao rotulo="Critério de julgamento">{l?.criterioJulgamento?.texto}</Definicao>
-            <Definicao rotulo="Modo de disputa">{l?.modoDisputa?.texto}</Definicao>
-          </Definicoes>
-        </Cartao>
-      ) : null}
-      {l ? (
-        <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
           <Pilha>
-            <Lista titulo="Itens" achados={l.itens} colunas={['Quantidade', 'Exigências técnicas']} campos={['quantidade', 'exigenciasTecnicas']} irPara={irPara} />
-            <Lista titulo="Documentos de habilitação" achados={l.documentos} colunas={['Tipo']} campos={['tipoDocumento']} irPara={irPara} />
-            <Lista titulo="Amostras" achados={l.amostras} colunas={[]} campos={[]} irPara={irPara} />
-            <Lista titulo="Prazos" achados={l.prazos} colunas={['Tipo', 'Data']} campos={['tipo', 'data']} irPara={irPara} />
-            <Lista titulo="Riscos" achados={l.riscos} colunas={['Tipo', 'Fundamento']} campos={['tipo', 'fundamento']} irPara={irPara} />
+            <Coluna titulo="Resumo da pré-leitura"><Paragrafo>{d.preLeitura.resumo}</Paragrafo></Coluna>
+            {d.preLeitura.motivo ? <Coluna titulo="Por que essa prioridade"><Paragrafo>{d.preLeitura.motivo}</Paragrafo></Coluna> : null}
           </Pilha>
-          <Panel className="lg:sticky lg:top-4 lg:self-start">
-            <PanelHeader title="Texto do edital" hint="Clique na página de um achado para pular até ela." />
-            <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
-              {paginas.map((p) => (
-                <section key={p.pagina} id={`pagina-${p.pagina}`} className="mb-4 scroll-mt-2">
-                  <p className="mb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">Página {p.pagina}</p>
-                  <pre className="font-sans text-[12px] whitespace-pre-wrap text-ink-secondary">{p.texto}</pre>
-                </section>
-              ))}
-            </div>
-          </Panel>
-        </div>
+        </Cartao>
+      ) : null}
+
+      {!e ? (
+        <Panel>
+          <EmptyState title="Edital ainda não lido" hint={d.cabecalho.decisao === 'PARTICIPAR' ? 'A leitura completa está na fila; atualize em instantes.' : 'A leitura completa só roda depois da decisão de participar.'} />
+        </Panel>
+      ) : (
+        <Cartao>
+          <Pilha>
+            <Fatos>
+              <Fato rotulo="Arquivos do edital" detalhe={<Selos>{e.arquivos.map((a) => a.url
+                ? <LinkExterno key={a.nome} href={a.url}>{a.nome}</LinkExterno>
+                : <span key={a.nome}>{a.nome}</span>)}{!e.arquivos.some((a) => a.url) && d.linkPortal ? <LinkExterno href={d.linkPortal}>PDFs no portal</LinkExterno> : null}</Selos>}>
+                {e.arquivos.length} {e.arquivos.length === 1 ? 'arquivo' : 'arquivos'} · {totalPaginas} p.
+              </Fato>
+              <Fato rotulo="Leitura por IA" detalhe={e.lidoEm ? `${fmtInstante(e.lidoEm)} · US$ ${numero(e.custo, 2)}` : null}>{e.modelo}</Fato>
+              <Fato rotulo="IA nesta licitação" detalhe="pré-leitura, leitura e conciliação">{d.iaCusto != null ? `US$ ${numero(d.iaCusto, 2)}` : null}</Fato>
+            </Fatos>
+            {l?.criterioJulgamento?.texto ? <Coluna titulo="Critério de julgamento"><Paragrafo>{l.criterioJulgamento.texto}</Paragrafo></Coluna> : null}
+            {l?.modoDisputa?.texto ? <Coluna titulo="Modo de disputa"><Paragrafo>{l.modoDisputa.texto}</Paragrafo></Coluna> : null}
+          </Pilha>
+        </Cartao>
+      )}
+
+      {e && d.cabecalho.marcas.includes('SEM_TEXTO_EDITAL') ? <Alert tone="warn">O edital não tem texto extraível (escaneado). Leia os arquivos e registre o parecer à mão.</Alert> : null}
+
+      {l && secao ? (
+        <ComLateral
+          principal={
+            <Panel>
+              <PanelHeader title="Achados do edital" hint="O que a leitura encontrou; a página leva ao trecho no texto ao lado." />
+              <Toolbar>
+                <Contadores>
+                  {secoes.map((s) => <Contador key={s.chave} rotulo={s.titulo} valor={s.achados.length} ativo={s.chave === secao.chave} onClick={() => setAtiva(s.chave)} />)}
+                </Contadores>
+              </Toolbar>
+              <Table>
+                <thead><tr><Th>Descrição</Th>{secao.colunas.map((col) => <Th key={col}>{col}</Th>)}<Th>Página</Th></tr></thead>
+                <tbody>
+                  {secao.achados.map((a, i) => (
+                    <Tr key={i}>
+                      <Td>{a.descricao}{a.trecho ? <Rebaixado>“{a.trecho}”</Rebaixado> : null}</Td>
+                      {secao.campos.map((campo) => <Td key={String(campo)}>{a[campo] == null ? <Dash /> : campo === 'quantidade' ? `${a.quantidade} ${a.unidade ?? ''}` : String(a[campo])}</Td>)}
+                      <Td><Pagina a={a} irPara={irPara} /></Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Panel>
+          }
+          lateral={
+            <Panel>
+              <PanelHeader title="Texto do edital" hint={`${paginas.length} páginas com texto`} />
+              <TextoPaginado paginas={paginas} />
+            </Panel>
+          }
+        />
       ) : null}
     </Pilha>
   );
 }
 
-function Lista({ titulo, achados, colunas, campos, irPara }: { titulo: string; achados: Achado[] | undefined; colunas: string[]; campos: (keyof Achado)[]; irPara: (p: number) => void }) {
-  if (!achados?.length) return null;
-  return (
-    <Panel>
-      <PanelHeader title={`${titulo} (${achados.length})`} />
-      <Table>
-        <thead><tr><Th>Descrição</Th>{colunas.map((c) => <Th key={c}>{c}</Th>)}<Th>Página</Th></tr></thead>
-        <tbody>
-          {achados.map((a, i) => (
-            <Tr key={i}>
-              <Td>{a.descricao}{a.trecho ? <Rebaixado>“{a.trecho}”</Rebaixado> : null}</Td>
-              {campos.map((c) => <Td key={String(c)}>{a[c] == null ? <Dash /> : c === 'quantidade' ? `${a.quantidade} ${a.unidade ?? ''}` : String(a[c])}</Td>)}
-              <Td><Pagina a={a} irPara={irPara} /></Td>
-            </Tr>
-          ))}
-        </tbody>
-      </Table>
-    </Panel>
-  );
-}
-
 // ── Documentos (conciliação) ──────────────────────────────────────────────
+
+type Filtro = 'todas' | 'pendentes' | 'atendidas' | 'justificadas';
 
 function Documentos({ id, exigencias, editavel, onMudou, avisar }: { id: number; exigencias: Exigencia[]; editavel: boolean; onMudou: () => void; avisar: (a: Aviso) => void }) {
   const [resolvendo, setResolvendo] = useState<Exigencia | null>(null);
   const [cofre, setCofre] = useState<Documento[]>([]);
   const [documentoId, setDocumentoId] = useState('');
   const [justificativa, setJustificativa] = useState('');
+  const [filtro, setFiltro] = useState<Filtro>('todas');
 
   useEffect(() => { motor<Documento[]>('GET', 'documentos').then(setCofre).catch(() => setCofre([])); }, []);
+
+  const grupos: Record<Filtro, Exigencia[]> = {
+    todas: exigencias,
+    pendentes: exigencias.filter((e) => e.status !== 'ATENDIDO' && !e.justificativa),
+    atendidas: exigencias.filter((e) => e.status === 'ATENDIDO'),
+    justificadas: exigencias.filter((e) => e.status !== 'ATENDIDO' && !!e.justificativa),
+  };
+  const lista = grupos[filtro];
 
   function abrir(e: Exigencia) {
     setResolvendo(e);
@@ -256,22 +287,34 @@ function Documentos({ id, exigencias, editavel, onMudou, avisar }: { id: number;
 
   return (
     <Panel>
-      <PanelHeader title="Exigências de habilitação" hint="Regra por tipo e validade contra o cofre; para avançar, tudo atendido ou justificado (RN-011)." />
-      {exigencias.length === 0 ? <EmptyState title="Sem exigências conciliadas" hint="A conciliação roda logo depois da leitura completa." /> : (
-        <Table>
-          <thead><tr><Th>Exigência</Th><Th>Tipo</Th><Th>Situação</Th><Th>Justificativa</Th><Th /></tr></thead>
-          <tbody>
-            {exigencias.map((e) => (
-              <Tr key={e.id}>
-                <Td>{e.descricao}{e.pagina != null ? <RowMetaInline>p. {e.pagina}</RowMetaInline> : null}</Td>
-                <Td>{e.tipoDocumento ? <Code>{e.tipoDocumento}</Code> : <Dash />}</Td>
-                <Td><Status tone={TOM_EXIGENCIA[e.status]}>{ROTULO_EXIGENCIA[e.status]}</Status>{e.detalhe ? <RowMetaInline>{e.detalhe}</RowMetaInline> : null}</Td>
-                <Td>{e.justificativa ? <>{e.justificativa}<RowMetaInline>{e.justificadoPor}</RowMetaInline></> : <Dash />}</Td>
-                <Td numeric>{editavel ? <TextLink onClick={() => abrir(e)}>Resolver</TextLink> : null}</Td>
-              </Tr>
-            ))}
-          </tbody>
-        </Table>
+      <PanelHeader title="Exigências de habilitação" hint="Conciliadas com o cofre por tipo e validade. Para avançar, cada uma precisa de documento atendido ou justificativa (RN-011)." />
+      {exigencias.length === 0 ? <EmptyState title="Sem exigências ainda" hint="Elas aparecem quando a leitura completa e a conciliação terminam." /> : (
+        <>
+          <Toolbar>
+            <Contadores>
+              <Contador rotulo="Todas" valor={grupos.todas.length} ativo={filtro === 'todas'} onClick={() => setFiltro('todas')} />
+              <Contador rotulo="Pendentes" valor={grupos.pendentes.length} ativo={filtro === 'pendentes'} onClick={() => setFiltro('pendentes')} />
+              <Contador rotulo="Atendidas" valor={grupos.atendidas.length} ativo={filtro === 'atendidas'} onClick={() => setFiltro('atendidas')} />
+              <Contador rotulo="Justificadas" valor={grupos.justificadas.length} ativo={filtro === 'justificadas'} onClick={() => setFiltro('justificadas')} />
+            </Contadores>
+          </Toolbar>
+          {lista.length === 0 ? <EmptyState title="Nada neste filtro" hint="Escolha outro contador acima." /> : (
+            <Table>
+              <thead><tr><Th>Exigência</Th><Th>Documento</Th><Th>Situação</Th><Th>Justificativa</Th>{editavel ? <Th /> : null}</tr></thead>
+              <tbody>
+                {lista.map((e) => (
+                  <Tr key={e.id}>
+                    <Td>{e.descricao}{e.pagina != null ? <RowMeta>página {e.pagina} do edital</RowMeta> : null}</Td>
+                    <Td>{e.tipoDocumento ? <Code>{e.tipoDocumento}</Code> : <Dash />}</Td>
+                    <Td><Status tone={TOM_EXIGENCIA[e.status]}>{ROTULO_EXIGENCIA[e.status]}</Status>{e.detalhe ? <RowMeta>{e.detalhe}</RowMeta> : null}</Td>
+                    <Td>{e.justificativa ? <>{e.justificativa}<RowMeta>{e.justificadoPor}</RowMeta></> : <Dash />}</Td>
+                    {editavel ? <Td numeric><TextLink onClick={() => abrir(e)}>Resolver</TextLink></Td> : null}
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </>
       )}
       <Dialog open={resolvendo !== null} onOpenChange={(aberto) => !aberto && setResolvendo(null)}>
         <DialogContent>
@@ -300,10 +343,6 @@ function Documentos({ id, exigencias, editavel, onMudou, avisar }: { id: number;
   );
 }
 
-function RowMetaInline({ children }: { children: React.ReactNode }) {
-  return <span className="block text-[12px] text-ink-secondary">{children}</span>;
-}
-
 // ── Estratégia ────────────────────────────────────────────────────────────
 
 function Estrategia({ id, pontos, onMudou, avisar }: { id: number; pontos: PontoEstrategia[]; onMudou: () => void; avisar: (a: Aviso) => void }) {
@@ -320,22 +359,48 @@ function Estrategia({ id, pontos, onMudou, avisar }: { id: number; pontos: Ponto
     <Pilha>
       {pontos.map((p) => (
         <Cartao key={p.id}>
-          <Selos>
-            <Badge tone={p.tipo === 'IMPUGNACAO' ? 'alert' : 'accent'}>{p.tipo === 'IMPUGNACAO' ? 'impugnação' : 'esclarecimento'}</Badge>
-            <Status tone={TOM_ESTADO_PONTO[p.estado]}>{ROTULO_ESTADO_PONTO[p.estado]}</Status>
-            {p.prazo ? <span className="text-[12px] text-ink-secondary">prazo {fmtData(p.prazo)}</span> : null}
-            {p.pagina != null ? <span className="text-[12px] text-ink-secondary">p. {p.pagina}</span> : null}
-          </Selos>
-          {p.trecho ? <Rebaixado>“{p.trecho}”</Rebaixado> : null}
-          <p className="text-[13px] text-ink">{p.fundamento}</p>
-          <Selos>
-            {p.estado === 'SUGERIDO' ? <Button size="sm" variant="primary" onClick={() => mudar(p, 'APROVADO')}>Aprovar</Button> : null}
-            {p.estado === 'APROVADO' ? <Button size="sm" variant="primary" onClick={() => mudar(p, 'ENVIADO_PELA_PESSOA')}>Marcar como enviado</Button> : null}
-            {p.estado === 'SUGERIDO' || p.estado === 'APROVADO' || p.estado === 'FORA_DO_PRAZO' ? <Button size="sm" onClick={() => mudar(p, 'DESCARTADO')}>Descartar</Button> : null}
-          </Selos>
+          <Pilha>
+            <Selos>
+              <Badge tone={p.tipo === 'IMPUGNACAO' ? 'alert' : 'accent'}>{p.tipo === 'IMPUGNACAO' ? 'impugnação' : 'esclarecimento'}</Badge>
+              <Status tone={TOM_ESTADO_PONTO[p.estado]}>{ROTULO_ESTADO_PONTO[p.estado]}</Status>
+            </Selos>
+            {p.prazo || p.pagina != null ? <RowMeta>{[p.prazo ? `prazo ${fmtData(p.prazo)}` : null, p.pagina != null ? `página ${p.pagina} do edital` : null].filter(Boolean).join(' · ')}</RowMeta> : null}
+            {p.trecho ? <Rebaixado>“{p.trecho}”</Rebaixado> : null}
+            <Paragrafo>{p.fundamento}</Paragrafo>
+            <Selos>
+              {p.estado === 'SUGERIDO' ? <Button size="sm" variant="primary" onClick={() => mudar(p, 'APROVADO')}>Aprovar</Button> : null}
+              {p.estado === 'APROVADO' ? <Button size="sm" variant="primary" onClick={() => mudar(p, 'ENVIADO_PELA_PESSOA')}>Marcar como enviado</Button> : null}
+              {p.estado === 'SUGERIDO' || p.estado === 'APROVADO' || p.estado === 'FORA_DO_PRAZO' ? <Button size="sm" onClick={() => mudar(p, 'DESCARTADO')}>Descartar</Button> : null}
+            </Selos>
+          </Pilha>
         </Cartao>
       ))}
     </Pilha>
+  );
+}
+
+// ── Calendário ────────────────────────────────────────────────────────────
+
+function Calendario({ d }: { d: LicitacaoDetalhe }) {
+  return (
+    <Panel>
+      <PanelHeader title="Calendário legal" hint="Datas do edital; esclarecimento e impugnação por regra quando o edital não diz (RN-009)." />
+      {d.calendario.length === 0 ? <EmptyState title="Sem prazos ainda" hint="O calendário nasce com a leitura completa." /> : (
+        <Table>
+          <thead><tr><Th>Prazo</Th><Th>Data</Th><Th>Origem</Th><Th>Alerta</Th></tr></thead>
+          <tbody>
+            {d.calendario.map((e) => (
+              <Tr key={e.id}>
+                <Td>{ROTULO_EVENTO[e.tipo] ?? e.tipo}</Td>
+                <Td>{fmtData(e.data)}<RowMeta>{diasAte(e.data)}</RowMeta></Td>
+                <Td>{e.origem === 'EDITAL' ? 'edital' : 'regra padrão'}</Td>
+                <Td>{e.alertadoEm ? fmtInstante(e.alertadoEm) : <Dash />}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </Panel>
   );
 }
 
@@ -346,9 +411,10 @@ const ORIGEM: Record<Evento['origem'], string> = { PORTAL: 'portal', USUARIO: 'p
 function Historico({ id }: { id: number }) {
   const [eventos, setEventos] = useState<Evento[] | null>(null);
   useEffect(() => { motor<Evento[]>('GET', `oportunidades/${id}/eventos`).then(setEventos).catch(() => setEventos([])); }, [id]);
-  if (!eventos) return <p className="text-[13px] text-ink-secondary">Carregando...</p>;
+  if (!eventos) return <Paragrafo>Carregando o histórico…</Paragrafo>;
+  if (eventos.length === 0) return <Panel><EmptyState title="Sem eventos" hint="Captação, funil, decisão e leitura aparecem aqui." /></Panel>;
   return (
-    <Panel className="p-4">
+    <Cartao>
       <LinhaDoTempo>
         {eventos.map((e) => (
           <Momento key={e.id} quando={fmtInstante(e.em)} titulo={<>{e.acao.toLowerCase()} · {ORIGEM[e.origem]} {e.autor}{e.regra ? <> · <Code>{e.regra}</Code></> : null}</>}>
@@ -356,6 +422,6 @@ function Historico({ id }: { id: number }) {
           </Momento>
         ))}
       </LinhaDoTempo>
-    </Panel>
+    </Cartao>
   );
 }

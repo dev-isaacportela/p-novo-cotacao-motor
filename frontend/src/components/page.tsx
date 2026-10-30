@@ -1158,6 +1158,62 @@ export function Definicoes({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-1">{children}</div>;
 }
 
+/**
+ * Fatos do topo de uma tela de detalhe (§8.1): rótulo em caixa alta sobre o valor, em grade. Substitui a lista rótulo/valor
+ * esticada de ponta a ponta, que numa tela larga deixava o valor a 1.500px do rótulo.
+ */
+export function Fatos({ children }: { children: React.ReactNode }) {
+  return <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-5">{children}</dl>;
+}
+
+export function Fato({ rotulo, children, detalhe }: { rotulo: string; children: React.ReactNode; detalhe?: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <dt className="text-[11px] font-semibold tracking-wide text-ink-muted uppercase">{rotulo}</dt>
+      <dd className="text-[14px] font-semibold text-ink">{children ?? <Dash />}</dd>
+      {detalhe ? <dd className="text-[12px] text-ink-secondary">{detalhe}</dd> : null}
+    </div>
+  );
+}
+
+/** Texto corrido dentro de cartão (resumo, motivo, fundamento): corpo legível, sem virar tabela. */
+export function Paragrafo({ children }: { children: React.ReactNode }) {
+  return <p className="max-w-[80ch] text-[13px] leading-relaxed text-ink">{children}</p>;
+}
+
+/** Conteúdo principal com uma coluna lateral que gruda ao rolar (ex.: achados ao lado do texto do edital). */
+export function ComLateral({ principal, lateral }: { principal: React.ReactNode; lateral: React.ReactNode }) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+      <div className="min-w-0">{principal}</div>
+      <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">{lateral}</div>
+    </div>
+  );
+}
+
+/** Texto longo em páginas, cada uma com âncora `pagina-N` para o salto a partir de um achado; rola por dentro. */
+export function TextoPaginado({ paginas }: { paginas: { pagina: number; texto: string }[] }) {
+  return (
+    <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
+      {paginas.map((p) => (
+        <section key={p.pagina} id={`pagina-${p.pagina}`} className="mb-4 scroll-mt-2">
+          <p className="mb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">Página {p.pagina}</p>
+          <pre className="font-sans text-[12px] whitespace-pre-wrap text-ink-secondary">{p.texto}</pre>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/** Link para fora do sistema (portal de origem, PDF original): abre em nova aba, sublinha no hover. */
+export function LinkExterno({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">
+      {children}
+    </a>
+  );
+}
+
 /** Área rebaixada dentro do componente (§5): evidência, snapshot, código. */
 export function Rebaixado({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cn('rounded-xl bg-muted px-3 py-2 text-[12px] text-ink-secondary', className)}>{children}</div>;

@@ -785,6 +785,20 @@ PanelHeader({ title, hint?, children? })  // faixa de título dentro do painel
 Card({ children, className? })            // cartão rounded-3xl com sombra leve, p-5
 ```
 
+```tsx
+Fatos({ children })                          // grade de fatos do topo de uma tela de detalhe (5 colunas em lg)
+Fato({ rotulo, children, detalhe? })         // rótulo em caixa alta sobre o valor; detalhe é a linha de apoio
+Paragrafo({ children })                      // texto corrido dentro de cartão, até 80 caracteres por linha
+ComLateral({ principal, lateral })           // conteúdo principal + coluna que gruda ao rolar (texto de apoio)
+TextoPaginado({ paginas })                   // texto longo por página, âncora pagina-N, rola por dentro
+LinkExterno({ href, children })              // sai do sistema (portal, PDF original) em nova aba
+```
+
+*Emenda de 2026-10-30 (análise de licitação):* tela de detalhe abre com `Fatos` num `Cartao`, não com a lista
+rótulo/valor (`Definicoes`) esticada de ponta a ponta — numa tela de 1.600px o valor ficava a 1.500px do rótulo e o
+olho não ligava um ao outro. A ação do momento vai para o `actions` do `PageHeader`; o que falta para a tela andar vai
+num `Alert tone="info"` de uma frase, com o atalho para a aba onde se resolve.
+
 `Panel` **não tem `overflow-hidden`** de propósito: ele recortaria o menu de
 filtro na borda do painel. O canto arredondado se resolve pelo fundo branco do
 cabeçalho da tabela (mesma cor do painel) e pela última linha sem filete
