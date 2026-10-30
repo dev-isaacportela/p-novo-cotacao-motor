@@ -11,6 +11,7 @@ import {
   Alert, Badge, Button, Code, Dash, EmptyState, Field, FilterChip, Input, LabelledField, PageHeader, Pagination, Panel, Pilha, RowMeta, RowTitle,
   SelectMenu, Selos, Status, Table, Td, TextLink, Th, Toolbar, Tr,
 } from '@/components/page';
+import { DialogoCaptar, type Captada } from './DialogoCaptar';
 import { DialogoDecisao } from './DialogoDecisao';
 
 const CHAVE_FILTROS = 'cot-licitacoes-filtros';
@@ -40,6 +41,7 @@ export default function TriagemPage() {
   const [lista, setLista] = useState<LicitacaoLista | null>(null);
   const [aviso, setAviso] = useState<{ tone: 'warn' | 'success'; texto: string } | null>(null);
   const [decidindo, setDecidindo] = useState<LicitacaoResumo | null>(null);
+  const [captando, setCaptando] = useState(false);
   const [ocupado, iniciar] = useTransition();
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export default function TriagemPage() {
 
   return (
     <>
-      <PageHeader module="Licitações" title="Triagem" description="Licitações pré-lidas pela IA, da sessão mais próxima para a mais distante. A decisão é sua." actions={<Button onClick={carregar} disabled={ocupado}>Atualizar</Button>} />
+      <PageHeader module="Licitações" title="Triagem" description="Licitações pré-lidas pela IA, da sessão mais próxima para a mais distante. A decisão é sua." actions={<><Button onClick={carregar} disabled={ocupado}>Atualizar</Button><Button variant="primary" onClick={() => setCaptando(true)}>Captar do PNCP</Button></>} />
       {aviso ? <Alert tone={aviso.tone} className="mb-4">{aviso.texto}</Alert> : null}
       <Pilha>
         <Panel>
@@ -90,7 +92,7 @@ export default function TriagemPage() {
           </Toolbar>
 
           {lista && lista.itens.length === 0 ? (
-            <EmptyState title="Nada para decidir" hint="Quando o funil aprovar licitações e a IA pré-ler, elas aparecem aqui." />
+            <EmptyState title="Nada para decidir" hint="Capte uma licitação do PNCP pelo id; depois do funil e da pré-leitura ela aparece aqui." action={<Button onClick={() => setCaptando(true)}>Captar do PNCP</Button>} />
           ) : (
             <Table>
               <thead>
@@ -135,6 +137,13 @@ export default function TriagemPage() {
         </Panel>
       </Pilha>
 
+      <DialogoCaptar aberto={captando} onFechar={() => setCaptando(false)} onCaptada={(c: Captada) => {
+        setCaptando(false);
+        setAviso({ tone: 'success', texto: c.resultado === 'NOVA'
+          ? `Licitação captada com ${c.itens} itens. O funil e a pré-leitura rodam agora; ela aparece aqui em instantes.`
+          : 'Essa licitação já estava no motor; nada mudou nela.' });
+        carregar();
+      }} />
       <DialogoDecisao key={decidindo?.id ?? 'fechado'} licitacao={decidindo} onFechar={() => setDecidindo(null)}
         onDecidido={(status) => { setDecidindo(null); setAviso({ tone: 'success', texto: status === 'EM_ANALISE' ? 'Decisão registrada: a leitura completa entrou na fila.' : 'Decisão registrada.' }); carregar(); }} />
     </>
