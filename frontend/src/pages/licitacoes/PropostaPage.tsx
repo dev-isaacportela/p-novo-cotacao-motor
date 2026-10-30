@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motor, ErroMotor } from '@/lib/motor';
 import { fmtData, fmtInstante, moeda, numero, quantidade } from '@/lib/formato';
-import { ROTULO_MARCA } from '@/lib/cobertura';
+import { percentual, ROTULO_MARCA } from '@/lib/cobertura';
 import { ROTULO_STATUS_LICITACAO, TOM_STATUS_LICITACAO } from '@/lib/licitacao';
 import { avaliarPreco, pendenciasPorItem, ROTULO_AVALIACAO, ROTULO_ORIGEM, ROTULO_RESULTADO, TOM_RESULTADO, tomDaLinha } from '@/lib/licitacaoProposta';
 import { useSessao } from '@/lib/sessao';
@@ -13,7 +13,7 @@ import type { EdicaoLinha, LinhaProposta, Pacote, PropostaLicitacao, Resultado }
 import {
   Alert, Badge, Button, CabecalhoFixo, CheckRow, Code, Dash, Definicao, Definicoes, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, EmptyState, Input, LabelledField, PageHeader, Panel, PanelHeader, Pilha, RowMeta, RowTitle, SelectMenu, Selos, Status, Table,
-  Td, Textarea, Th, Tr,
+  Td, TextLink, Textarea, Th, Tr,
 } from '@/components/page';
 
 type Aviso = { tone: 'error' | 'warn' | 'success'; texto: string };
@@ -181,6 +181,7 @@ export default function PropostaPage() {
                   <Td>
                     {l.declinado ? <Status tone="off">declinado{l.motivoDeclinio ? ` · ${l.motivoDeclinio}` : ''}</Status>
                       : l.codProd ? <><RowTitle><Code>{l.codProd}</Code> {l.marca ?? ''}</RowTitle><RowMeta>{[l.fabricante, l.embalagem, l.registroAnvisa ? `Anvisa ${l.registroAnvisa}` : null].filter(Boolean).join(' · ')}</RowMeta></>
+                      : l.candidatos.length ? <><RowTitle>{l.candidatos.length} candidatos</RowTitle><RowMeta>melhor <Code>{l.candidatos[0].codProd}</Code> {l.candidatos[0].nome} · {percentual(l.candidatos[0].coverage)}</RowMeta></>
                       : <Dash />}
                     {faltas.length ? <RowMeta><span className="text-attention">{faltas.join(' · ')}</span></RowMeta> : null}
                   </Td>
@@ -250,6 +251,20 @@ function DialogoLinha({ linha, erro, onFechar, onSalvar, ocupado }: { linha: Lin
                 <LabelledField label="Código do produto" hint={trocaProduto && codProd ? 'Trocar o produto refaz preço sugerido, teto e mínimo (RF-002).' : 'Vazio mantém o casamento atual.'}>
                   <Input value={codProd} onChange={(e) => setCodProd(e.target.value)} inputMode="numeric" />
                 </LabelledField>
+                {linha.candidatos.length ? (
+                  <Table>
+                    <thead><tr><Th>Candidato do casamento</Th><Th numeric>Cobertura</Th><Th /></tr></thead>
+                    <tbody>
+                      {linha.candidatos.map((c) => (
+                        <Tr key={c.codProd}>
+                          <Td><RowTitle><Code>{c.codProd}</Code> {c.nome}</RowTitle><RowMeta>{[c.marca, c.embalagem, c.status === 'ACTIVE' ? null : c.status].filter(Boolean).join(' · ')}</RowMeta></Td>
+                          <Td numeric>{percentual(c.coverage)}</Td>
+                          <Td numeric>{String(c.codProd) === codProd.trim() ? <RowMeta>escolhido</RowMeta> : <TextLink onClick={() => setCodProd(String(c.codProd))}>Usar</TextLink>}</Td>
+                        </Tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                ) : null}
                 <LabelledField label="Preço final" hint={<>sugerido {linha.precoSugerido != null ? moeda(linha.precoSugerido) : '—'}{linha.tetoGoverno != null ? ` · teto ${moeda(linha.tetoGoverno)}` : ''}{linha.valorMinimo != null ? ` · mínimo ${moeda(linha.valorMinimo)}` : ''}{av !== 'OK' && av !== 'SEM_PRECO' ? <span className="text-destructive"> · {ROTULO_AVALIACAO[av]}</span> : null}</>}>
                   <Input value={preco} onChange={(e) => setPreco(e.target.value)} inputMode="decimal" />
                 </LabelledField>

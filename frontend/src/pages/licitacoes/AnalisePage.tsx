@@ -70,6 +70,8 @@ export default function AnalisePage() {
 
   const c = d.cabecalho;
   const pendentes = d.exigencias.filter((e) => e.status !== 'ATENDIDO' && !e.justificativa);
+  // sem edital lido não há exigência, e "nenhuma pendente" não quer dizer tudo atendido (o motor recusa com RN-011)
+  const conciliada = d.edital != null && ['CONCILIACAO', 'ESTRATEGIA'].includes(c.etapa ?? '');
   const semTexto = c.marcas.includes('SEM_TEXTO_EDITAL');
 
   return (
@@ -101,8 +103,8 @@ export default function AnalisePage() {
             {c.status === 'PRONTA_PARA_PROPOSTA' ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)} disabled={ocupado}>Montar proposta</Button> : null}
             {['EM_REVISAO', 'APROVADA', 'ENVIADA', 'GANHA', 'PERDIDA'].includes(c.status) ? <Button variant="primary" onClick={() => navigate(`/licitacoes/${id}/proposta`)}>Ver proposta</Button> : null}
             {c.status === 'EM_ANALISE' ? (
-              <span title={pendentes.length ? `${pendentes.length} exigência(s) sem documento nem justificativa (RN-011)` : 'Marca como pronta para montar a proposta'}>
-                <Button variant="primary" onClick={() => acao('pronta', 'Pronta para proposta.')} disabled={ocupado || pendentes.length > 0}>Pronta para proposta</Button>
+              <span title={!conciliada ? 'Aguardando a leitura completa e a conciliação do edital (RN-011)' : pendentes.length ? `${pendentes.length} exigência(s) sem documento nem justificativa (RN-011)` : 'Marca como pronta para montar a proposta'}>
+                <Button variant="primary" onClick={() => acao('pronta', 'Pronta para proposta.')} disabled={ocupado || !conciliada || pendentes.length > 0}>Pronta para proposta</Button>
               </span>
             ) : null}
           </Selos>

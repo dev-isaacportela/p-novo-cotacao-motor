@@ -211,6 +211,15 @@ export interface PerdaCaptacao {
 export type Resultado = 'VENCEDOR' | 'PERDEU' | 'DESCLASSIFICADO';
 export type OrigemRegistro = 'FONTE' | 'PESSOA';
 
+export interface CandidatoLinha {
+  codProd: number;
+  nome: string;
+  marca: string | null;
+  embalagem: string | null;
+  status: string | null;
+  coverage: number;
+}
+
 export interface LinhaProposta {
   itemId: number;
   item: string;
@@ -240,6 +249,10 @@ export interface LinhaProposta {
   resultado: Resultado | null;
   precoVencedor: number | null;
   resultadoOrigem: OrigemRegistro | null;
+  /** Confiança do casamento do item com o catálogo (0..1); null sem casamento. */
+  confianca: number | null;
+  /** Os 5 primeiros candidatos do casamento, para escolher quando nenhum passou do limiar. */
+  candidatos: CandidatoLinha[];
 }
 
 export interface PropostaLicitacao {
