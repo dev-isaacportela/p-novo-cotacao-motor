@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { motor, ErroMotor } from '@/lib/motor';
 import { fmtData, moeda } from '@/lib/formato';
 import { ROTULO_MARCA } from '@/lib/cobertura';
-import { aderencia, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO, TOM_STATUS_LICITACAO, tomDaPrioridade, valorNoEscopo } from '@/lib/licitacao';
+import { aderencia, itensDoEscopo, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO, TOM_STATUS_LICITACAO, tomDaPrioridade, valorNoEscopo } from '@/lib/licitacao';
 import type { LicitacaoLista, LicitacaoResumo } from '@/lib/tiposLicitacao';
 import {
   Alert, Badge, Button, Code, Dash, EmptyState, Field, FilterChip, Input, LabelledField, PageHeader, Pagination, Panel, Pilha, RowMeta, RowTitle,
@@ -115,7 +115,7 @@ export default function TriagemPage() {
                     <Td numeric>
                       {l.valorEstimado != null ? moeda(l.valorEstimado) : <Dash />}
                       {escopo ? <RowMeta>no escopo: {escopo.valor}{escopo.rotulo ? ` (${escopo.rotulo})` : ''}</RowMeta> : null}
-                      {l.itensNoEscopo != null ? <RowMeta>{l.itensNoEscopo} {l.itensNoEscopo === 1 ? 'item' : 'itens'} no escopo</RowMeta> : null}
+                      {l.itensNoEscopo != null ? <RowMeta>{itensDoEscopo(l)}</RowMeta> : null}
                     </Td>
                     <Td>
                       {l.prioridade ? <Status tone={tomDaPrioridade(l.prioridade)}>{ROTULO_PRIORIDADE[l.prioridade] ?? l.prioridade.toLowerCase()}</Status> : <Dash />}

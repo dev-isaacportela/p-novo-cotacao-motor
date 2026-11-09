@@ -147,6 +147,13 @@ export function valorNoEscopo(r: { itensNoEscopo: number | null; valorNoEscopo: 
   return { valor: moeda(r.valorNoEscopo), rotulo: r.valorParcial ? 'estimativa parcial' : 'estimativa' };
 }
 
+/** C-018: "3 de 181 itens"; sem o total, só a quantidade no escopo. */
+export function itensDoEscopo(r: { itensNoEscopo: number | null; itensTotal?: number | null }): string {
+  if (r.itensNoEscopo == null) return '';
+  if (r.itensTotal != null) return `${r.itensNoEscopo} de ${r.itensTotal} ${r.itensTotal === 1 ? 'item' : 'itens'}`;
+  return `${r.itensNoEscopo} ${r.itensNoEscopo === 1 ? 'item' : 'itens'} no escopo`;
+}
+
 /** C-019: valor de um item na tabela; vazio vira traço na tela. */
 export function valorDoItem(i: { valorTotalEstimado: string; orcamentoSigiloso: boolean }): string {
   if (i.valorTotalEstimado !== '') return moeda(i.valorTotalEstimado);

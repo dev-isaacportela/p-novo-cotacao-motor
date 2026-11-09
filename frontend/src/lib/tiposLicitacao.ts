@@ -26,6 +26,7 @@ export interface LicitacaoResumo {
   aderencia: number | null;
   resumoIa: string | null;
   itensNoEscopo: number | null;
+  itensTotal: number | null;
   valorNoEscopo: number | null;
   valorParcial: boolean;
 }

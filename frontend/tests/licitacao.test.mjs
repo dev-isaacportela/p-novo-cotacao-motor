@@ -50,7 +50,10 @@ test('cabeçalho da análise: modalidade, órgão e distância da sessão', asyn
 });
 
 test('C-018, C-019: valor no escopo e valor por item', async () => {
-  const { valorNoEscopo, valorDoItem } = await import('../src/lib/licitacao.ts');
+  const { valorNoEscopo, valorDoItem, itensDoEscopo } = await import('../src/lib/licitacao.ts');
+  assert.equal(itensDoEscopo({ itensNoEscopo: 3, itensTotal: 181 }), '3 de 181 itens');
+  assert.equal(itensDoEscopo({ itensNoEscopo: 1, itensTotal: null }), '1 item no escopo');
+  assert.equal(itensDoEscopo({ itensNoEscopo: null, itensTotal: null }), '');
   const nb = (s) => s.replace(/ /g, ' ');
   const r = valorNoEscopo({ itensNoEscopo: 3, valorNoEscopo: 40000, valorParcial: false });
   assert.equal(nb(r.valor), 'R$ 40.000,00');
