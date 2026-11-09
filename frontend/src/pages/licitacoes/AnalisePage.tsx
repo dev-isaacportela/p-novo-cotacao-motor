@@ -8,7 +8,7 @@ import { fmtData, fmtInstante, moeda, numero } from '@/lib/formato';
 import { ROTULO_MARCA } from '@/lib/cobertura';
 import {
   aderencia, diasAte, nomeModalidade, nomeProprio, paginasDoTexto, porteDaPreLeitura, proximoPasso, ROTULO_ESTADO_PONTO, ROTULO_EVENTO,
-  ROTULO_EXIGENCIA, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO, TOM_ESTADO_PONTO, TOM_EXIGENCIA, TOM_STATUS_LICITACAO, tomDaPrioridade,
+  ROTULO_EXIGENCIA, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO, TOM_ESTADO_PONTO, TOM_EXIGENCIA, TOM_STATUS_LICITACAO, tomDaPrioridade, valorDoItem, valorNoEscopo,
   type Aba,
 } from '@/lib/licitacao';
 import type { Achado, Documento, Exigencia, LicitacaoDetalhe, PontoEstrategia } from '@/lib/tiposLicitacao';
@@ -82,6 +82,7 @@ export default function AnalisePage() {
   const conciliada = d.edital != null && ['CONCILIACAO', 'ESTRATEGIA'].includes(c.etapa ?? '');
   const passo = proximoPasso(c.status, conciliada, pendentes.length, c.decisao === 'PARTICIPAR');
   const porte = porteDaPreLeitura(d.preLeitura?.porte);
+  const escopo = valorNoEscopo(c);
 
   const principal =
     c.status === 'EM_DECISAO' || c.status === 'EM_ESPERA' ? <Button variant="primary" onClick={() => setDecidindo(true)} disabled={ocupado}>Decidir</Button>
@@ -106,7 +107,9 @@ export default function AnalisePage() {
             <Fatos>
               <Fato rotulo="Situação"><Status tone={TOM_STATUS_LICITACAO[c.status] ?? 'off'}>{ROTULO_STATUS_LICITACAO[c.status] ?? c.status}</Status></Fato>
               <Fato rotulo="Sessão" detalhe={diasAte(c.sessaoEm)}>{c.sessaoEm ? fmtInstante(c.sessaoEm) : null}</Fato>
-              <Fato rotulo="Valor estimado" detalhe={porte}>{c.valorEstimado != null ? moeda(c.valorEstimado) : null}</Fato>
+              <Fato rotulo="Valor estimado" detalhe={escopo ? null : porte}>{c.valorEstimado != null ? moeda(c.valorEstimado) : null}</Fato>
+              {escopo ? <Fato rotulo="Valor no escopo" detalhe={[escopo.rotulo, porte].filter(Boolean).join(' · ')}>{escopo.valor}</Fato> : null}
+              {d.valorCasado != null ? <Fato rotulo="Valor casado" detalhe={d.valorCasadoParcial ? 'parcial' : 'itens com produto'}>{moeda(d.valorCasado)}</Fato> : null}
               <Fato rotulo="Pré-leitura" detalhe={c.aderencia != null ? `aderência ${aderencia(c.aderencia)}` : null}>
                 {c.prioridade ? <Status tone={tomDaPrioridade(c.prioridade)}>prioridade {ROTULO_PRIORIDADE[c.prioridade] ?? c.prioridade}</Status> : null}
               </Fato>
@@ -210,6 +213,26 @@ function Parecer({ d, irPara }: { d: LicitacaoDetalhe; irPara: (p: number) => vo
       )}
 
       {e && d.cabecalho.marcas.includes('SEM_TEXTO_EDITAL') ? <Alert tone="warn">O edital não tem texto extraível (escaneado). Leia os arquivos e registre o parecer à mão.</Alert> : null}
+
+      {d.itens.length ? (
+        <Panel>
+          <PanelHeader title="Itens da licitação" hint="Valor informado pelo portal. O escopo é apontado pela IA na pré-leitura." />
+          <Table>
+            <thead><tr><Th>Item</Th><Th>Descrição</Th><Th numeric>Quantidade</Th><Th numeric>Valor estimado</Th><Th>Escopo</Th></tr></thead>
+            <tbody>
+              {d.itens.map((i) => (
+                <Tr key={i.id}>
+                  <Td><Code>{i.numero}</Code></Td>
+                  <Td>{i.descricao}</Td>
+                  <Td numeric>{i.quantidade ? `${numero(i.quantidade)} ${i.unidade}` : <Dash />}</Td>
+                  <Td numeric>{valorDoItem(i) || <Dash />}</Td>
+                  <Td><Status tone={i.noEscopo ? 'live' : 'off'}>{i.noEscopo ? 'no escopo' : 'fora'}</Status></Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </Panel>
+      ) : null}
 
       {l && secao ? (
         <ComLateral

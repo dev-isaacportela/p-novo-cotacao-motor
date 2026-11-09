@@ -25,6 +25,9 @@ export interface LicitacaoResumo {
   prioridade: string | null;
   aderencia: number | null;
   resumoIa: string | null;
+  itensNoEscopo: number | null;
+  valorNoEscopo: number | null;
+  valorParcial: boolean;
 }
 
 export interface LicitacaoLista {
@@ -115,7 +118,8 @@ export interface EventoCalendario {
 
 export interface LicitacaoDetalhe {
   cabecalho: LicitacaoResumo;
-  itens: { id: number; descricao: string; unidade: string; quantidade: string }[];
+  /** `valorTotalEstimado` vem '' quando o portal não informa. */
+  itens: { id: number; numero: string; descricao: string; unidade: string; quantidade: string; valorTotalEstimado: string; orcamentoSigiloso: boolean; noEscopo: boolean }[];
   preLeitura: PreLeitura | null;
   decisaoPor: string | null;
   decisaoEm: string | null;
@@ -128,6 +132,9 @@ export interface LicitacaoDetalhe {
   iaCusto: number | null;
   /** Página pública da licitação no portal (no PNCP, com os PDFs originais). */
   linkPortal: string | null;
+  /** Soma dos itens ligados a produto, sem os declinados (RF-020). */
+  valorCasado: number | null;
+  valorCasadoParcial: boolean;
 }
 
 export interface Documento {

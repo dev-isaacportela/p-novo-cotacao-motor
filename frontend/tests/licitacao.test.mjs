@@ -49,6 +49,20 @@ test('cabeçalho da análise: modalidade, órgão e distância da sessão', asyn
   assert.equal(porteDaPreLeitura(null), '');
 });
 
+test('C-018, C-019: valor no escopo e valor por item', async () => {
+  const { valorNoEscopo, valorDoItem } = await import('../src/lib/licitacao.ts');
+  const nb = (s) => s.replace(/ /g, ' ');
+  const r = valorNoEscopo({ itensNoEscopo: 3, valorNoEscopo: 40000, valorParcial: false });
+  assert.equal(nb(r.valor), 'R$ 40.000,00');
+  assert.equal(r.rotulo, 'estimativa');
+  assert.equal(valorNoEscopo({ itensNoEscopo: 3, valorNoEscopo: 100, valorParcial: true }).rotulo, 'estimativa parcial');
+  assert.equal(valorNoEscopo({ itensNoEscopo: 3, valorNoEscopo: null, valorParcial: false }).valor, 'valor não informado');
+  assert.equal(valorNoEscopo({ itensNoEscopo: null, valorNoEscopo: null, valorParcial: false }), null);
+  assert.equal(nb(valorDoItem({ valorTotalEstimado: '1500.50', orcamentoSigiloso: false })), 'R$ 1.500,50');
+  assert.equal(valorDoItem({ valorTotalEstimado: '', orcamentoSigiloso: true }), 'sigiloso');
+  assert.equal(valorDoItem({ valorTotalEstimado: '', orcamentoSigiloso: false }), '');
+});
+
 test('RN-011: próximo passo da análise', async () => {
   const { proximoPasso } = await import('../src/lib/licitacao.ts');
   assert.equal(proximoPasso('EM_DECISAO', false, 0, false)?.aba, 'parecer');

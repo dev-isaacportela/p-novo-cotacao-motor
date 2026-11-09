@@ -1,6 +1,8 @@
 // Regra pura das telas de licitação (spec 006): rótulos e tons, aderência, situação de documento por data e a quebra
 // do texto do edital em páginas para o salto a partir de um achado. Sem React, sem SDK — `tests/licitacao.test.mjs`.
 
+import { moeda } from './formato.ts';
+
 export type Tom = 'live' | 'attention' | 'alert' | 'off';
 
 /** Aderência 0–100 vinda da pré-leitura ⇒ "80 %"; vazio sem valor. */
@@ -136,6 +138,19 @@ export function porteDaPreLeitura(porte: Record<string, unknown> | null | undefi
   const escopo = Number(porte?.itensNoEscopo);
   if (!Number.isFinite(total) || total <= 0) return '';
   return Number.isFinite(escopo) ? `${escopo} de ${total} ${total === 1 ? 'item' : 'itens'} no escopo` : `${total} ${total === 1 ? 'item' : 'itens'}`;
+}
+
+/** RF-019, RN-017: valor no escopo é estimativa; sem valor fica "valor não informado", nunca zero. Null em pré-leitura sem os campos. */
+export function valorNoEscopo(r: { itensNoEscopo: number | null; valorNoEscopo: number | null; valorParcial: boolean }): { valor: string; rotulo: string } | null {
+  if (r.itensNoEscopo == null) return null;
+  if (r.valorNoEscopo == null) return { valor: 'valor não informado', rotulo: '' };
+  return { valor: moeda(r.valorNoEscopo), rotulo: r.valorParcial ? 'estimativa parcial' : 'estimativa' };
+}
+
+/** C-019: valor de um item na tabela; vazio vira traço na tela. */
+export function valorDoItem(i: { valorTotalEstimado: string; orcamentoSigiloso: boolean }): string {
+  if (i.valorTotalEstimado !== '') return moeda(i.valorTotalEstimado);
+  return i.orcamentoSigiloso ? 'sigiloso' : '';
 }
 
 export type Aba = 'parecer' | 'documentos' | 'estrategia' | 'calendario' | 'historico';

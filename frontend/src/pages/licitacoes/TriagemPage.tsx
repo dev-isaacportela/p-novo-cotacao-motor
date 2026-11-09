@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { motor, ErroMotor } from '@/lib/motor';
 import { fmtData, moeda } from '@/lib/formato';
 import { ROTULO_MARCA } from '@/lib/cobertura';
-import { aderencia, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO, TOM_STATUS_LICITACAO, tomDaPrioridade } from '@/lib/licitacao';
+import { aderencia, ROTULO_PRIORIDADE, ROTULO_STATUS_LICITACAO, TOM_STATUS_LICITACAO, tomDaPrioridade, valorNoEscopo } from '@/lib/licitacao';
 import type { LicitacaoLista, LicitacaoResumo } from '@/lib/tiposLicitacao';
 import {
   Alert, Badge, Button, Code, Dash, EmptyState, Field, FilterChip, Input, LabelledField, PageHeader, Pagination, Panel, Pilha, RowMeta, RowTitle,
@@ -101,7 +101,9 @@ export default function TriagemPage() {
                 </tr>
               </thead>
               <tbody>
-                {(lista?.itens ?? []).map((l) => (
+                {(lista?.itens ?? []).map((l) => {
+                  const escopo = valorNoEscopo(l);
+                  return (
                   <Tr key={l.id} onClick={() => navigate(`/licitacoes/${l.id}`)} className="cursor-pointer">
                     <Td>{l.sessaoEm ? fmtData(l.sessaoEm) : <Dash />}<RowMeta>{l.modalidade?.toLowerCase()}</RowMeta></Td>
                     <Td>
@@ -110,7 +112,11 @@ export default function TriagemPage() {
                       <RowMeta>{l.fontes.map((f) => <Code key={f}>{f}</Code>)}</RowMeta>
                     </Td>
                     <Td><span className="line-clamp-2 max-w-md">{l.objeto}</span>{l.resumoIa ? <RowMeta>{l.resumoIa}</RowMeta> : null}</Td>
-                    <Td numeric>{l.valorEstimado != null ? moeda(l.valorEstimado) : <Dash />}</Td>
+                    <Td numeric>
+                      {l.valorEstimado != null ? moeda(l.valorEstimado) : <Dash />}
+                      {escopo ? <RowMeta>no escopo: {escopo.valor}{escopo.rotulo ? ` (${escopo.rotulo})` : ''}</RowMeta> : null}
+                      {l.itensNoEscopo != null ? <RowMeta>{l.itensNoEscopo} {l.itensNoEscopo === 1 ? 'item' : 'itens'} no escopo</RowMeta> : null}
+                    </Td>
                     <Td>
                       {l.prioridade ? <Status tone={tomDaPrioridade(l.prioridade)}>{ROTULO_PRIORIDADE[l.prioridade] ?? l.prioridade.toLowerCase()}</Status> : <Dash />}
                       {l.aderencia != null ? <RowMeta>aderência {aderencia(l.aderencia)}</RowMeta> : null}
@@ -126,7 +132,8 @@ export default function TriagemPage() {
                       {l.status === 'NAO_PARTICIPAR' ? <TextLink onClick={(e) => { e.stopPropagation(); resgatar(l); }}>Resgatar</TextLink> : null}
                     </Td>
                   </Tr>
-                ))}
+                  );
+                })}
               </tbody>
             </Table>
           )}
